@@ -5,22 +5,11 @@ import { useProfile } from '@/hooks/useProfile';
 import { useHabits } from '@/hooks/useHabits';
 
 export default function DashboardPage() {
-    const {
-        currentUserProfile,
-        partnerProfile,
-        loading: profileLoading,
-    } = useProfile();
-    const {
-        habitTemplates,
-        monthlyGoals,
-        habitEntries,
-        loading: habitsLoading,
-    } = useHabits();
+    const { currentUserProfile, partnerProfile } = useProfile();
+    const { habitTemplates, monthlyGoals, habitEntries } = useHabits();
 
     // Get current day of week (0 = Sunday, 1 = Monday, etc.)
     const today = new Date().getDay();
-
-    const loading = profileLoading || habitsLoading;
 
     // Process data to create weekly view
     const weeklyData = useMemo(() => {
@@ -150,14 +139,6 @@ export default function DashboardPage() {
             };
         });
     }, [currentUserProfile, monthlyGoals, habitTemplates, habitEntries]);
-
-    if (loading) {
-        return (
-            <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-                <div className="text-slate-400">Loading...</div>
-            </div>
-        );
-    }
 
     const userName = currentUserProfile?.name || 'User';
     const userPoints = currentUserProfile?.points || 0;

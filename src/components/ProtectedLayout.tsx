@@ -3,13 +3,14 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation'; // Use this from 'next/navigation' in App Router
 import { useAuth } from '../hooks/useAuth';
+import { useProfile } from '../hooks/useProfile';
 import MobileNav from './mobileNav';
 
 // A simple loading component. You can make this more sophisticated.
 function LoadingSpinner() {
     return (
-        <div className="flex justify-center items-center h-screen">
-            Loading...
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+            <div className="text-slate-400">Loading...</div>
         </div>
     );
 }
@@ -19,12 +20,15 @@ export default function ProtectedLayout({
 }: {
     children: React.ReactNode;
 }) {
-    const { user, loading } = useAuth();
+    const { user, loading: authLoading } = useAuth();
+    const { loading: profileLoading } = useProfile();
     const router = useRouter();
+
+    const loading = authLoading || profileLoading;
 
     useEffect(() => {
         // We can't check for a user until the loading state is false.
-        if (loading) {
+        if (authLoading) {
             return;
         }
 
@@ -32,15 +36,15 @@ export default function ProtectedLayout({
         if (!user) {
             router.push('/login');
         }
-    }, [user, loading, router]); // The effect depends on these values.
+    }, [user, authLoading, router]); // The effect depends on these values.
 
-    // 1. While the auth state is loading, show a spinner.
+    // 1. While the auth or profile state is loading, show a spinner.
     // This prevents a "flash" of the protected content before the redirect can happen.
     if (loading) {
         return <LoadingSpinner />;
     }
 
-    // 2. If the user is authenticated, render the children (the actual page).
+    // 2. If the user is authenticated and profiles are loaded, render the children (the actual page).
     if (user) {
         return (
             <>
