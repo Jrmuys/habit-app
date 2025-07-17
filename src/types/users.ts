@@ -25,6 +25,18 @@ export type Couple = {
     createdAt: string; // ISO 8601 timestamp
 };
 
+export function isCouple(obj: any): obj is Couple {
+    return (
+        obj &&
+        typeof obj.coupleId === 'string' &&
+        Array.isArray(obj.members) &&
+        obj.members.length === 2 &&
+        typeof obj.members[0] === 'string' &&
+        typeof obj.members[1] === 'string' &&
+        typeof obj.createdAt === 'string'
+    );
+}
+
 export type ProfileContextType = {
     currentUserProfile: UserProfile | null;
     partnerProfile: UserProfile | null;

@@ -1,3 +1,5 @@
+'use client'
+
 import { ProfileContextType } from '@/types';
 import { createContext } from 'react';
 
