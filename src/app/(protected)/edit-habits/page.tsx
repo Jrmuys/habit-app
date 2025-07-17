@@ -4,15 +4,16 @@ import { useState, useEffect } from 'react';
 import { useProfile } from '@/hooks/useProfile';
 import { useHabits } from '@/hooks/useHabits';
 import { useRouter } from 'next/navigation';
-import { 
-    ArrowLeft, 
-    Edit3, 
-    Save, 
+import {
+    ArrowLeft,
+    Edit3,
+    Save,
     X,
     Target,
     Calendar,
     Hash,
-    Clock
+    Clock,
+    Plus,
 } from 'lucide-react';
 import { doc, updateDoc, addDoc, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -32,7 +33,9 @@ function EditHabitModal({
     onSave: (updatedHabit: any) => void;
 }) {
     const [frequency, setFrequency] = useState(habit?.goal?.frequency || 3);
-    const [targetValue, setTargetValue] = useState(habit?.goal?.targetValue?.value || 1);
+    const [targetValue, setTargetValue] = useState(
+        habit?.goal?.targetValue?.value || 1
+    );
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
@@ -52,14 +55,16 @@ function EditHabitModal({
                 goal: {
                     ...habit.goal,
                     frequency,
-                    targetValue: habit.goal?.targetValue ? {
-                        ...habit.goal.targetValue,
-                        value: targetValue
-                    } : {
-                        operator: 'GREATER_THAN' as const,
-                        value: targetValue
-                    }
-                }
+                    targetValue: habit.goal?.targetValue
+                        ? {
+                              ...habit.goal.targetValue,
+                              value: targetValue,
+                          }
+                        : {
+                              operator: 'GREATER_THAN' as const,
+                              value: targetValue,
+                          },
+                },
             };
             await onSave(updatedHabit);
             onClose();
@@ -108,17 +113,21 @@ function EditHabitModal({
                                 min="1"
                                 max="7"
                                 value={frequency}
-                                onChange={(e) => setFrequency(parseInt(e.target.value))}
+                                onChange={(e) =>
+                                    setFrequency(parseInt(e.target.value))
+                                }
                                 className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                             />
-                            <span className="text-sm text-slate-400">times per week</span>
+                            <span className="text-sm text-slate-400">
+                                times per week
+                            </span>
                         </div>
                     </div>
 
                     {/* Target Value */}
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Target Value per Session
+                            Target Value
                         </label>
                         <div className="flex items-center gap-2">
                             <Target className="text-slate-400" size={16} />
@@ -126,10 +135,14 @@ function EditHabitModal({
                                 type="number"
                                 min="1"
                                 value={targetValue}
-                                onChange={(e) => setTargetValue(parseInt(e.target.value))}
+                                onChange={(e) =>
+                                    setTargetValue(parseInt(e.target.value))
+                                }
                                 className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                             />
-                            <span className="text-sm text-slate-400">{template.unit}</span>
+                            <span className="text-sm text-slate-400">
+                                units
+                            </span>
                         </div>
                     </div>
 
@@ -167,7 +180,9 @@ export default function EditHabitsPage() {
     // Get current month's habits
     const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
     const currentMonthHabits = monthlyGoals.filter(
-        goal => goal.userId === currentUserProfile?.uid && goal.month === currentMonth
+        (goal) =>
+            goal.userId === currentUserProfile?.uid &&
+            goal.month === currentMonth
     );
 
     const handleEditHabit = (habit: any) => {
@@ -180,19 +195,35 @@ export default function EditHabitsPage() {
 
         try {
             // Update the monthly goal
-            const habitDocRef = doc(db, 'monthlyGoals', updatedHabit.monthlyGoalId);
+            const habitDocRef = doc(
+                db,
+                'monthlyGoals',
+                updatedHabit.monthlyGoalId
+            );
             await updateDoc(habitDocRef, {
                 goal: updatedHabit.goal,
             });
 
             // Create activity log entry (only if it's not the first day of the month)
             const today = new Date();
-            const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-            
+            const firstDayOfMonth = new Date(
+                today.getFullYear(),
+                today.getMonth(),
+                1
+            );
+
             if (today > firstDayOfMonth && currentUserProfile.coupleId) {
-                const template = habitTemplates.find(t => t.habitId === updatedHabit.habitId);
-                const activityText = `${currentUserProfile.name} updated the goal for '${template?.name}' for ${today.toLocaleDateString('en-US', { month: 'long' })}.`;
-                
+                const template = habitTemplates.find(
+                    (t) => t.habitId === updatedHabit.habitId
+                );
+                const activityText = `${
+                    currentUserProfile.name
+                } updated the goal for '${
+                    template?.name
+                }' for ${today.toLocaleDateString('en-US', {
+                    month: 'long',
+                })}.`;
+
                 await addDoc(collection(db, 'activityLog'), {
                     coupleId: currentUserProfile.coupleId,
                     authorId: currentUserProfile.uid,
@@ -200,7 +231,6 @@ export default function EditHabitsPage() {
                     text: activityText,
                 });
             }
-
         } catch (error) {
             console.error('Error updating habit:', error);
             throw error;
@@ -221,28 +251,52 @@ export default function EditHabitsPage() {
                     <h1 className="text-3xl font-bold text-slate-100">
                         Edit Habits
                     </h1>
+                    <div className="flex-1"></div>
+                    <button
+                        onClick={() => router.push('/add-habit')}
+                        className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+                    >
+                        <Plus size={16} />
+                        Add Habit
+                    </button>
                 </div>
                 <p className="text-slate-400 px-2">
-                    Modify your active habits for {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                    Modify your active habits for{' '}
+                    {new Date().toLocaleDateString('en-US', {
+                        month: 'long',
+                        year: 'numeric',
+                    })}
                 </p>
             </header>
 
             <main className="p-4">
                 {currentMonthHabits.length === 0 ? (
                     <div className="bg-slate-800 rounded-lg p-8 text-center">
-                        <Calendar className="mx-auto text-slate-400 mb-4" size={48} />
+                        <Calendar
+                            className="mx-auto text-slate-400 mb-4"
+                            size={48}
+                        />
                         <h3 className="text-lg font-semibold text-slate-100 mb-2">
                             No Active Habits
                         </h3>
-                        <p className="text-slate-400">
+                        <p className="text-slate-400 mb-6">
                             You don't have any active habits for this month yet.
                         </p>
+                        <button
+                            onClick={() => router.push('/add-habit')}
+                            className="flex items-center gap-2 mx-auto px-6 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-colors"
+                        >
+                            <Plus size={20} />
+                            Add Your First Habit
+                        </button>
                     </div>
                 ) : (
                     <div className="space-y-3">
                         {currentMonthHabits.map((habit) => {
-                            const template = habitTemplates.find(t => t.habitId === habit.habitId);
-                            
+                            const template = habitTemplates.find(
+                                (t) => t.habitId === habit.habitId
+                            );
+
                             return (
                                 <div
                                     key={habit.monthlyGoalId}
@@ -251,7 +305,8 @@ export default function EditHabitsPage() {
                                     <div className="flex items-center justify-between">
                                         <div className="flex-1">
                                             <h3 className="text-lg font-semibold text-slate-100">
-                                                {template?.name || 'Unknown Habit'}
+                                                {template?.name ||
+                                                    'Unknown Habit'}
                                             </h3>
                                             <p className="text-sm text-slate-400 mb-2">
                                                 {template?.description}
@@ -259,16 +314,26 @@ export default function EditHabitsPage() {
                                             <div className="flex items-center gap-4 text-sm text-slate-300">
                                                 <div className="flex items-center gap-1">
                                                     <Hash size={14} />
-                                                    <span>{habit.goal?.frequency || 0}x per week</span>
+                                                    <span>
+                                                        {habit.goal
+                                                            ?.frequency || 0}
+                                                        x per week
+                                                    </span>
                                                 </div>
                                                 <div className="flex items-center gap-1">
                                                     <Target size={14} />
-                                                    <span>{habit.goal?.targetValue?.value || 0} units</span>
+                                                    <span>
+                                                        {habit.goal?.targetValue
+                                                            ?.value || 0}{' '}
+                                                        units
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
                                         <button
-                                            onClick={() => handleEditHabit(habit)}
+                                            onClick={() =>
+                                                handleEditHabit(habit)
+                                            }
                                             className="p-2 text-slate-400 hover:text-cyan-500 hover:bg-slate-600 rounded-lg transition-colors"
                                         >
                                             <Edit3 size={20} />
@@ -286,7 +351,13 @@ export default function EditHabitsPage() {
                 isOpen={showEditModal}
                 onClose={() => setShowEditModal(false)}
                 habit={editingHabit}
-                template={editingHabit ? habitTemplates.find(t => t.habitId === editingHabit.habitId) : null}
+                template={
+                    editingHabit
+                        ? habitTemplates.find(
+                              (t) => t.habitId === editingHabit.habitId
+                          )
+                        : null
+                }
                 onSave={handleSaveHabit}
             />
         </div>

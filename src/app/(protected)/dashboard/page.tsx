@@ -3,13 +3,16 @@
 import { Fragment, useMemo } from 'react';
 import { useProfile } from '@/hooks/useProfile';
 import { useHabits } from '@/hooks/useHabits';
+import { useRouter } from 'next/navigation';
+import { Edit3, Calendar, Settings } from 'lucide-react';
 
 export default function DashboardPage() {
     const { currentUserProfile, partnerProfile } = useProfile();
     const { habitTemplates, monthlyGoals, habitEntries } = useHabits();
+    const router = useRouter();
 
     // Get current day of week (0 = Sunday, 1 = Monday, etc.)
-    const today = new Date().getDay();
+    const todayDayOfWeek = new Date().getDay();
 
     // Process data to create weekly view
     const weeklyData = useMemo(() => {
@@ -143,6 +146,18 @@ export default function DashboardPage() {
     const userName = currentUserProfile?.name || 'User';
     const userPoints = currentUserProfile?.points || 0;
 
+    // Check if it's the last week of the month for "Plan Next Month" notification
+    const today = new Date();
+    const lastDayOfMonth = new Date(
+        today.getFullYear(),
+        today.getMonth() + 1,
+        0
+    );
+    const daysUntilEndOfMonth = Math.ceil(
+        (lastDayOfMonth.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    const showPlanNextMonthBanner = daysUntilEndOfMonth <= 7;
+
     return (
         <div className="min-h-screen bg-slate-900">
             {/* Header Section */}
@@ -151,10 +166,52 @@ export default function DashboardPage() {
                     <h1 className="text-xl font-bold text-slate-100">
                         {userName}'s Habits
                     </h1>
-                    <div className="text-slate-100 font-semibold">
-                        {userPoints} Pts
+                    <div className="flex items-center gap-3">
+                        <div className="text-slate-100 font-semibold">
+                            {userPoints} Pts
+                        </div>
+                        <button
+                            onClick={() => router.push('/edit-habits')}
+                            className="p-2 text-slate-400 hover:text-cyan-500 hover:bg-slate-700 rounded-lg transition-colors"
+                            title="Edit Habits"
+                        >
+                            <Edit3 size={20} />
+                        </button>
                     </div>
                 </div>
+
+                {/* Plan Next Month Banner */}
+                {showPlanNextMonthBanner && (
+                    <div className="mt-4 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <Calendar className="text-white" size={24} />
+                                <div>
+                                    <h3 className="text-white font-semibold">
+                                        Ready to plan for{' '}
+                                        {new Date(
+                                            today.getFullYear(),
+                                            today.getMonth() + 1
+                                        ).toLocaleDateString('en-US', {
+                                            month: 'long',
+                                        })}
+                                        ?
+                                    </h3>
+                                    <p className="text-cyan-100 text-sm">
+                                        Set up your habits for next month and
+                                        stay on track!
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => router.push('/plan-next-month')}
+                                className="px-4 py-2 bg-white text-cyan-600 font-medium rounded-lg hover:bg-cyan-50 transition-colors"
+                            >
+                                Plan Now
+                            </button>
+                        </div>
+                    </div>
+                )}
             </header>
 
             {/* Main Content */}
@@ -199,7 +256,7 @@ export default function DashboardPage() {
                                                         : 'bg-red-500'
                                                     : 'bg-slate-700'
                                             } ${
-                                                dayIndex === today
+                                                dayIndex === todayDayOfWeek
                                                     ? 'ring-2 ring-teal-500'
                                                     : ''
                                             }`}
