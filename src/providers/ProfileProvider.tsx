@@ -174,7 +174,22 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         };
     }, [user]);
 
-    const value = { currentUserProfile, partnerProfile, loading };
+    // Function to refresh profiles manually
+    const refreshProfiles = async () => {
+        if (!user) return;
+
+        setLoading(true);
+        // The real-time listeners will automatically update the profiles
+        // We just need to trigger a re-render by setting loading state
+        setTimeout(() => setLoading(false), 100);
+    };
+
+    const value = {
+        currentUserProfile,
+        partnerProfile,
+        loading,
+        refreshProfiles,
+    };
     console.log('ProfileProvider value:', value);
 
     return (

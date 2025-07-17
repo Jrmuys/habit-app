@@ -11,7 +11,7 @@ export function useHabits() {
     const [habitTemplates, setHabitTemplates] = useState<HabitTemplate[]>([]);
     const [monthlyGoals, setMonthlyGoals] = useState<MonthlyGoal[]>([]);
     const [habitEntries, setHabitEntries] = useState<HabitEntry[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false); // Start with false since ProtectedLayout handles auth loading
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
@@ -81,7 +81,7 @@ export function useHabits() {
             goalsUnsubscribe?.();
             entriesUnsubscribe?.();
         };
-    }, [user]);
+    }, [user?.uid]); // Only depend on user.uid, not the entire user object
 
     const createHabitTemplate = async (templateData: Omit<HabitTemplate, 'habitId' | 'userId' | 'createdAt'>) => {
         if (!user) throw new Error('User not authenticated');

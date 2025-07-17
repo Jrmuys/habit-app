@@ -3,27 +3,33 @@
 import { AuthContext } from '@/lib/authContext';
 import { useEffect, useState } from 'react';
 import { auth } from '@/lib/firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
+import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-   const [user, setUser] = useState<User | null>(null);
-   const [loading, setLoading] = useState(true);
+    const [user, setUser] = useState<User | null>(null);
+    const [loading, setLoading] = useState(true);
 
-   useEffect(() => {
-      const unsubscribe = onAuthStateChanged(auth, (user) => {
-         if (!user) {
-            setUser(null);
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, (user) => {
+            if (!user) {
+                setUser(null);
+                setLoading(false);
+                return;
+            }
+            setUser(user);
             setLoading(false);
-            return;
-         }
-         setUser(user);
-         setLoading(false);
-      });
+        });
 
-      return () => unsubscribe();
-   }, []);
+        return () => unsubscribe();
+    }, []);
 
-   const value = { user, loading };
+    const logout = async () => {
+        await signOut(auth);
+    };
 
-   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    const value = { user, loading, logout };
+
+    return (
+        <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+    );
 }

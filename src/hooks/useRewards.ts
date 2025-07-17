@@ -9,7 +9,7 @@ import { Reward } from '@/types/misc';
 export function useRewards() {
     const { user } = useAuth();
     const [rewards, setRewards] = useState<Reward[]>([]);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false); // Start with false since ProtectedLayout handles auth loading
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {

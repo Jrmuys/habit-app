@@ -92,8 +92,7 @@ function RewardModal({
 
 export default function RewardsPage() {
     const { currentUserProfile } = useProfile();
-    const { rewards, createReward, purchaseReward, loading, error } =
-        useRewards();
+    const { rewards, createReward, purchaseReward, error } = useRewards();
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingReward, setEditingReward] = useState<any>(null);
 
@@ -172,13 +171,7 @@ export default function RewardsPage() {
                         Available Rewards
                     </h2>
 
-                    {loading && rewards.length === 0 ? (
-                        <div className="bg-slate-800 rounded-lg p-8 shadow-lg">
-                            <div className="text-center text-slate-400">
-                                Loading rewards...
-                            </div>
-                        </div>
-                    ) : sortedRewards.length === 0 ? (
+                    {sortedRewards.length === 0 ? (
                         <div className="bg-slate-800 rounded-lg p-8 shadow-lg">
                             <div className="text-center">
                                 <Gift

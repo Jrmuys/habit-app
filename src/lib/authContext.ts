@@ -3,7 +3,14 @@
 import { User } from "firebase/auth";
 import { createContext } from "react";
 
-export const AuthContext = createContext<{ user: User | null; loading: boolean }>({
+export type AuthContextType = {
+    user: User | null;
+    loading: boolean;
+    logout: () => Promise<void>;
+};
+
+export const AuthContext = createContext<AuthContextType>({
     user: null,
     loading: true,
+    logout: async () => { },
 });
