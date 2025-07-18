@@ -1,22 +1,182 @@
 'use client';
 
-import { Fragment, useMemo } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useProfile } from '@/hooks/useProfile';
 import { useHabits } from '@/hooks/useHabits';
 import { useRouter } from 'next/navigation';
-import { Edit3, Calendar, Settings } from 'lucide-react';
+import { Edit3, Calendar, Settings, Check } from 'lucide-react';
+import HabitLoggingDialog from '@/components/HabitLoggingDialog';
+import { MonthlyGoal, ConstraintRule, HabitEntry } from '@/types';
+
+// Helper component to display constraint information
+const ConstraintInfo = ({ goal }: { goal: MonthlyGoal }) => {
+    const { goal: goalRule, constraints } = goal;
+
+    const renderGoal = () => {
+        const { period, frequency } = goalRule;
+
+        // Handle "every day" cases
+        if (
+            (period === 'DAILY' && frequency === 1) ||
+            (period === 'WEEKLY' && frequency === 7)
+        ) {
+            let text = 'Every day';
+            if (goalRule.targetValue) {
+                text += `, ${goalRule.targetValue.operator
+                    .toLowerCase()
+                    .replace('_', ' ')} `;
+                const valueSpan = `<span class="text-orange-400">${goalRule.targetValue.value}</span>`;
+                return { __html: text + valueSpan };
+            }
+            return { __html: text };
+        }
+
+        // Handle regular frequency cases
+        let timeText = frequency === 1 ? 'time' : 'times';
+        let periodText = period.toLowerCase().replace('ly', ''); // daily -> day, weekly -> week, monthly -> month
+
+        const freqSpan = `<span class="text-orange-400">${frequency}</span>`;
+        let text = `${freqSpan} ${timeText} per ${periodText}`;
+
+        if (goalRule.targetValue) {
+            text += `, ${goalRule.targetValue.operator
+                .toLowerCase()
+                .replace('_', ' ')} `;
+            const valueSpan = `<span class="text-orange-400">${goalRule.targetValue.value}</span>`;
+            text += valueSpan;
+        }
+
+        return { __html: text };
+    };
+
+    const renderConstraints = () => {
+        return constraints
+            .map((c: ConstraintRule, i: number) => {
+                if (c.type === 'GRACE_DAYS') {
+                    const allowanceText = c.allowance === 1 ? 'day' : 'days';
+                    const periodText = c.period.toLowerCase().replace('ly', '');
+                    const allowanceSpan = `<span class="text-orange-400">${c.allowance}</span>`;
+                    return {
+                        __html: `${allowanceSpan} grace ${allowanceText} per ${periodText}`,
+                    };
+                }
+
+                if (c.type === 'VALUE_FREQUENCY') {
+                    const timeText = c.frequency === 1 ? 'time' : 'times';
+                    const periodText = c.period.toLowerCase().replace('ly', '');
+                    const operatorText = c.targetValue.operator
+                        .toLowerCase()
+                        .replace('_', ' ');
+                    const freqSpan = `<span class="text-orange-400">${c.frequency}</span>`;
+                    const valueSpan = `<span class="text-orange-400">${c.targetValue.value}</span>`;
+                    return {
+                        __html: `${freqSpan} ${timeText} per ${periodText} must be ${operatorText} ${valueSpan}`,
+                    };
+                }
+
+                return null;
+            })
+            .filter((item): item is { __html: string } => item !== null);
+    };
+
+    const goalText = renderGoal();
+    const constraintTexts = renderConstraints();
+
+    return (
+        <div className="text-xs text-slate-400 mt-1">
+            <p dangerouslySetInnerHTML={goalText}></p>
+            {constraintTexts.map((text, i) => (
+                <p
+                    key={i}
+                    className="text-slate-500"
+                    dangerouslySetInnerHTML={text}
+                ></p>
+            ))}
+        </div>
+    );
+};
 
 export default function DashboardPage() {
-    const { currentUserProfile, partnerProfile } = useProfile();
-    const { habitTemplates, monthlyGoals, habitEntries } = useHabits();
+    const { currentUserProfile, partnerProfile, isSingleUser } = useProfile();
+    const { habitTemplates, monthlyGoals, habitEntries, logHabitEntry } =
+        useHabits();
     const router = useRouter();
+
+    // Dialog state
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [selectedHabit, setSelectedHabit] = useState<{
+        goal: MonthlyGoal;
+        targetDate: string;
+        existingEntry: any;
+    } | null>(null);
 
     // Get current day of week (0 = Sunday, 1 = Monday, etc.)
     const todayDayOfWeek = new Date().getDay();
 
+    // Handle habit click
+    const handleHabitClick = async (
+        goal: MonthlyGoal,
+        targetDate: string,
+        existingEntry: any
+    ) => {
+        if (goal.ui.type === 'CHECKBOX') {
+            // For checkbox habits, log directly without dialog
+            if (!existingEntry) {
+                try {
+                    await logHabitEntry({
+                        monthlyGoalId: goal.monthlyGoalId,
+                        targetDate: targetDate,
+                        value: true,
+                    });
+                } catch (error) {
+                    console.error('Error logging habit:', error);
+                }
+            }
+        } else {
+            // For other types, open dialog
+            setSelectedHabit({ goal, targetDate, existingEntry });
+            setDialogOpen(true);
+        }
+    };
+
+    const todaysHabits = useMemo(() => {
+        if (!currentUserProfile) return [];
+
+        const today = new Date().toISOString().slice(0, 10);
+        const currentMonth = new Date().toISOString().slice(0, 7);
+
+        const userGoals = monthlyGoals.filter(
+            (goal) =>
+                goal.userId === currentUserProfile.uid &&
+                goal.month === currentMonth
+        );
+
+        return userGoals.map((goal) => {
+            const template = habitTemplates.find(
+                (t) => t.habitId === goal.habitId
+            );
+            const entry = habitEntries.find(
+                (e) =>
+                    e.monthlyGoalId === goal.monthlyGoalId &&
+                    e.targetDate === today
+            );
+
+            return {
+                goal,
+                template,
+                entry,
+                today,
+            };
+        });
+    }, [currentUserProfile, monthlyGoals, habitTemplates, habitEntries]);
+
     // Process data to create weekly view
     const weeklyData = useMemo(() => {
-        if (!currentUserProfile || !partnerProfile) return [];
+        if (!currentUserProfile) return [];
+        const usersToShow = [currentUserProfile];
+        if (partnerProfile) {
+            usersToShow.push(partnerProfile);
+        }
 
         const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
         const currentDate = new Date();
@@ -28,16 +188,10 @@ export default function DashboardPage() {
             return date.toISOString().slice(0, 10); // YYYY-MM-DD format
         });
 
-        const users = [
-            {
-                profile: currentUserProfile,
-                initial: currentUserProfile.name.charAt(0).toUpperCase(),
-            },
-            {
-                profile: partnerProfile,
-                initial: partnerProfile.name.charAt(0).toUpperCase(),
-            },
-        ];
+        const users = usersToShow.map((profile) => ({
+            profile,
+            initial: profile.name.charAt(0).toUpperCase(),
+        }));
 
         return users.map((user, userIndex) => {
             const userGoals = monthlyGoals.filter(
@@ -98,47 +252,13 @@ export default function DashboardPage() {
             );
 
             return {
-                id: goal.monthlyGoalId,
-                name: template?.name || 'Unknown Habit',
-                description: template?.description || '',
-                completed: entries.length > 0,
-                status: entries.length > 0 ? 'complete' : 'incomplete',
-            };
-        });
-    }, [currentUserProfile, monthlyGoals, habitTemplates, habitEntries]);
-
-    // Process today's habits
-    const todayHabits = useMemo(() => {
-        if (!currentUserProfile) return [];
-
-        const todayDate = new Date().toISOString().slice(0, 10);
-        const currentMonth = new Date().toISOString().slice(0, 7);
-
-        const userGoals = monthlyGoals.filter(
-            (goal) =>
-                goal.userId === currentUserProfile.uid &&
-                goal.month === currentMonth
-        );
-
-        return userGoals.map((goal) => {
-            const template = habitTemplates.find(
-                (t) => t.habitId === goal.habitId
-            );
-            const entries = habitEntries.filter(
-                (entry) =>
-                    entry.monthlyGoalId === goal.monthlyGoalId &&
-                    entry.targetDate === todayDate
-            );
-
-            const completed = entries.length > 0;
-
-            return {
-                id: goal.monthlyGoalId,
-                name: template?.name || 'Unknown Habit',
-                description: template?.description || '',
-                completed,
-                status: completed ? 'complete' : 'incomplete',
-                icon: template?.icon,
+                goal,
+                template,
+                entries,
+                isCompleted: entries.length > 0,
+                canCompleteToday:
+                    goal.logging.allowNextDayCompletion && entries.length === 0, // Can complete today if allowed and not already done
+                yesterdayDate, // Pass the date for completion
             };
         });
     }, [currentUserProfile, monthlyGoals, habitTemplates, habitEntries]);
@@ -158,243 +278,265 @@ export default function DashboardPage() {
     );
     const showPlanNextMonthBanner = daysUntilEndOfMonth <= 7;
 
-    return (
-        <div className="min-h-screen bg-slate-900">
-            {/* Header Section */}
-            <header className="p-6">
-                <div className="flex justify-between items-center">
-                    <h1 className="text-xl font-bold text-slate-100">
-                        {userName}'s Habits
-                    </h1>
-                    <div className="flex items-center gap-3">
-                        <div className="text-slate-100 font-semibold">
-                            {userPoints} Pts
-                        </div>
-                        <button
-                            onClick={() => router.push('/edit-habits')}
-                            className="p-2 text-slate-400 hover:text-cyan-500 hover:bg-slate-700 rounded-lg transition-colors"
-                            title="Edit Habits"
-                        >
-                            <Edit3 size={20} />
-                        </button>
-                    </div>
-                </div>
+    if (!currentUserProfile || (!partnerProfile && !isSingleUser)) {
+        return <div>Loading...</div>;
+    }
 
-                {/* Plan Next Month Banner */}
-                {showPlanNextMonthBanner && (
-                    <div className="mt-4 bg-gradient-to-r from-cyan-600 to-blue-600 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                                <Calendar className="text-white" size={24} />
-                                <div>
-                                    <h3 className="text-white font-semibold">
-                                        Ready to plan for{' '}
-                                        {new Date(
-                                            today.getFullYear(),
-                                            today.getMonth() + 1
-                                        ).toLocaleDateString('en-US', {
-                                            month: 'long',
-                                        })}
-                                        ?
-                                    </h3>
-                                    <p className="text-cyan-100 text-sm">
-                                        Set up your habits for next month and
-                                        stay on track!
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => router.push('/plan-next-month')}
-                                className="px-4 py-2 bg-white text-cyan-600 font-medium rounded-lg hover:bg-cyan-50 transition-colors"
-                            >
-                                Plan Now
-                            </button>
-                        </div>
-                    </div>
-                )}
+    return (
+        <div className="min-h-screen bg-slate-900 text-slate-100">
+            <header className="p-4 flex justify-between items-center">
+                <h1 className="text-2xl font-bold text-cyan-400">Dashboard</h1>
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={() => router.push('/edit-habits')}
+                        className="p-2 rounded-full hover:bg-slate-800 transition-colors"
+                    >
+                        <Edit3 className="h-6 w-6 text-slate-400" />
+                    </button>
+                    <button className="p-2 rounded-full hover:bg-slate-800 transition-colors">
+                        <Calendar className="h-6 w-6 text-slate-400" />
+                    </button>
+                    <button className="p-2 rounded-full hover:bg-slate-800 transition-colors">
+                        <Settings className="h-6 w-6 text-slate-400" />
+                    </button>
+                </div>
             </header>
 
-            {/* Main Content */}
-            <main className="p-4 space-y-6">
-                {/* Weekly Progress View */}
-                <div className="bg-slate-800 rounded-lg p-4 shadow-lg">
-                    <div className="grid grid-cols-8 gap-2 items-center">
-                        {/* Empty cell for alignment with user initials column */}
-                        <div></div>
+            <main className="p-4 space-y-8">
+                {/* Weekly Progress Section */}
+                <section>
+                    <h2 className="text-xl font-semibold text-slate-300 mb-4">
+                        Weekly Progress
+                    </h2>
+                    <div className="bg-slate-800 rounded-lg p-4 shadow-lg">
+                        <div className="grid grid-cols-8 gap-2 items-center">
+                            {/* Empty cell for alignment with user initials column */}
+                            <div></div>
 
-                        {/* Day headers */}
-                        {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(
-                            (day, index) => (
+                            {/* Day headers */}
+                            {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map(
+                                (day, index) => (
+                                    <div
+                                        key={index}
+                                        className="text-center text-sm font-medium text-slate-400"
+                                    >
+                                        {day}
+                                    </div>
+                                )
+                            )}
+
+                            {/* User rows */}
+                            {weeklyData.map((userData, userIndex) => (
+                                <Fragment key={userIndex}>
+                                    {/* User initial */}
+                                    <div className="text-sm font-medium text-slate-400 text-center">
+                                        {userData.user}
+                                    </div>
+
+                                    {/* Daily status circles */}
+                                    {userData.days.map(
+                                        (completed, dayIndex) => (
+                                            <div
+                                                key={dayIndex}
+                                                className="flex justify-center"
+                                            >
+                                                <div
+                                                    className={`w-6 h-6 rounded-full ${
+                                                        completed
+                                                            ? userData.userIndex ===
+                                                              0
+                                                                ? 'bg-emerald-500'
+                                                                : 'bg-red-500'
+                                                            : 'bg-slate-700'
+                                                    } ${
+                                                        dayIndex ===
+                                                        todayDayOfWeek
+                                                            ? 'ring-2 ring-teal-500'
+                                                            : ''
+                                                    }`}
+                                                />
+                                            </div>
+                                        )
+                                    )}
+                                </Fragment>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* Yesterday's Summary Section */}
+                <section>
+                    <h2 className="text-xl font-semibold text-slate-300 mb-4">
+                        Yesterday's Summary
+                    </h2>
+                    <div className="space-y-4">
+                        {yesterdayHabits.map(
+                            ({
+                                goal,
+                                template,
+                                entries,
+                                isCompleted,
+                                canCompleteToday,
+                                yesterdayDate,
+                            }) => (
                                 <div
-                                    key={index}
-                                    className="text-center text-sm font-medium text-slate-400"
+                                    key={goal.monthlyGoalId}
+                                    className={`bg-slate-800 p-4 rounded-lg shadow-lg flex items-center justify-between ${
+                                        canCompleteToday
+                                            ? 'cursor-pointer transition-colors hover:bg-slate-700'
+                                            : ''
+                                    }`}
+                                    onClick={() =>
+                                        canCompleteToday &&
+                                        handleHabitClick(
+                                            goal,
+                                            yesterdayDate,
+                                            null
+                                        )
+                                    }
                                 >
-                                    {day}
+                                    <div className="flex items-center gap-4">
+                                        <span className="text-3xl">
+                                            {template?.icon}
+                                        </span>
+                                        <div>
+                                            <h3 className="font-bold text-slate-100">
+                                                {template?.name}
+                                                {canCompleteToday && (
+                                                    <span className="ml-2 text-xs bg-orange-600 text-white px-2 py-1 rounded">
+                                                        Can complete today
+                                                    </span>
+                                                )}
+                                            </h3>
+                                            <p className="text-sm text-slate-400">
+                                                {isCompleted
+                                                    ? `Completed: ${entries
+                                                          .map(
+                                                              (e: HabitEntry) =>
+                                                                  e.value
+                                                          )
+                                                          .join(', ')}`
+                                                    : canCompleteToday
+                                                    ? 'Not completed - click to log'
+                                                    : 'Not completed'}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div
+                                        className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                            isCompleted
+                                                ? 'bg-emerald-500'
+                                                : canCompleteToday
+                                                ? 'bg-orange-600'
+                                                : 'bg-slate-700'
+                                        }`}
+                                    >
+                                        {isCompleted && (
+                                            <span className="text-white font-bold">
+                                                ✓
+                                            </span>
+                                        )}
+                                        {canCompleteToday && !isCompleted && (
+                                            <span className="text-white font-bold">
+                                                !
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                             )
                         )}
-
-                        {/* User rows */}
-                        {weeklyData.map((userData, userIndex) => (
-                            <Fragment key={userIndex}>
-                                {/* User initial */}
-                                <div className="text-sm font-medium text-slate-400 text-center">
-                                    {userData.user}
-                                </div>
-
-                                {/* Daily status circles */}
-                                {userData.days.map((completed, dayIndex) => (
-                                    <div
-                                        key={dayIndex}
-                                        className="flex justify-center"
-                                    >
-                                        <div
-                                            className={`w-6 h-6 rounded-full ${
-                                                completed
-                                                    ? userData.userIndex === 0
-                                                        ? 'bg-emerald-500'
-                                                        : 'bg-red-500'
-                                                    : 'bg-slate-700'
-                                            } ${
-                                                dayIndex === todayDayOfWeek
-                                                    ? 'ring-2 ring-teal-500'
-                                                    : ''
-                                            }`}
-                                        />
-                                    </div>
-                                ))}
-                            </Fragment>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Main Progress Bar */}
-                <div className="bg-slate-800 rounded-lg p-4 shadow-lg">
-                    <div className="flex justify-between items-center mb-2">
-                        <span className="text-lg font-semibold text-slate-100">
-                            58%
-                        </span>
-                        <span className="text-sm font-medium text-slate-400">
-                            Overall Progress
-                        </span>
-                    </div>
-                    <div className="w-full bg-slate-700 rounded-full h-3">
-                        <div className="bg-emerald-500 h-3 rounded-full w-[58%]"></div>
-                    </div>
-                </div>
-
-                {/* Yesterday Habits */}
-                <section>
-                    <h2 className="text-xl font-semibold text-slate-100 mb-4">
-                        Yesterday
-                    </h2>
-                    <div className="space-y-4">
-                        {yesterdayHabits.map((habit) => (
-                            <div
-                                key={habit.id}
-                                className="bg-slate-800 rounded-lg p-4 shadow-lg"
-                            >
-                                <div className="flex items-center gap-4">
-                                    {/* Status Circle */}
-                                    <div
-                                        className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                                            habit.completed
-                                                ? 'bg-emerald-500'
-                                                : 'bg-slate-700'
-                                        }`}
-                                    >
-                                        {habit.completed && (
-                                            <svg
-                                                className="w-6 h-6 text-white"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth="2"
-                                                    d="M5 13l4 4L19 7"
-                                                />
-                                            </svg>
-                                        )}
-                                    </div>
-
-                                    {/* Habit Details */}
-                                    <div className="flex-1">
-                                        <h3 className="text-lg font-semibold text-slate-100">
-                                            {habit.name}
-                                        </h3>
-                                        <p className="text-base font-normal text-slate-400">
-                                            {habit.description}
-                                        </p>
-                                    </div>
-                                </div>
+                        {yesterdayHabits.length === 0 && (
+                            <div className="text-center py-8 px-4 bg-slate-800 rounded-lg">
+                                <p className="text-slate-400">
+                                    Nothing was scheduled for yesterday.
+                                </p>
                             </div>
-                        ))}
+                        )}
                     </div>
                 </section>
 
-                {/* Today Habits */}
+                {/* Today's Habits Section */}
                 <section>
-                    <h2 className="text-xl font-semibold text-slate-100 mb-4">
-                        Today
+                    <h2 className="text-xl font-semibold text-slate-300 mb-4">
+                        Today's Habits
                     </h2>
                     <div className="space-y-4">
-                        {todayHabits.map((habit) => (
-                            <div
-                                key={habit.id}
-                                className="bg-slate-800 rounded-lg p-4 shadow-lg"
-                            >
-                                <div className="flex items-center gap-4">
-                                    {/* Status Circle */}
-                                    <div
-                                        className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                                            habit.status === 'complete'
-                                                ? 'bg-emerald-500'
-                                                : habit.status === 'partial'
-                                                ? 'bg-orange-500 border-2 border-orange-500'
-                                                : 'bg-slate-700'
-                                        }`}
-                                    >
-                                        {habit.status === 'complete' && (
-                                            <svg
-                                                className="w-6 h-6 text-white"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    strokeWidth="2"
-                                                    d="M5 13l4 4L19 7"
-                                                />
-                                            </svg>
-                                        )}
-                                        {habit.status === 'partial' &&
-                                            habit.icon && (
-                                                <span className="text-white font-semibold">
-                                                    {habit.icon}
-                                                </span>
+                        {todaysHabits.map(
+                            ({ goal, template, entry, today }) => (
+                                <div
+                                    key={goal.monthlyGoalId}
+                                    className="bg-slate-800 p-4 rounded-lg shadow-lg cursor-pointer transition-colors hover:bg-slate-700"
+                                    onClick={() =>
+                                        handleHabitClick(goal, today, entry)
+                                    }
+                                >
+                                    <div className="flex items-center gap-4">
+                                        {/* Status Circle */}
+                                        <div
+                                            className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                                                entry
+                                                    ? 'bg-emerald-500'
+                                                    : 'bg-slate-700'
+                                            }`}
+                                        >
+                                            {entry && (
+                                                <Check className="h-6 w-6 text-white" />
                                             )}
-                                    </div>
+                                        </div>
 
-                                    {/* Habit Details */}
-                                    <div className="flex-1">
-                                        <h3 className="text-lg font-semibold text-slate-100">
-                                            {habit.name}
-                                        </h3>
-                                        <p className="text-base font-normal text-slate-400">
-                                            {habit.description}
-                                        </p>
+                                        {/* Habit Icon */}
+                                        <span className="text-3xl">
+                                            {template?.icon}
+                                        </span>
+
+                                        {/* Habit Details */}
+                                        <div className="flex-1">
+                                            <h3 className="font-bold text-slate-100">
+                                                {template?.name}
+                                            </h3>
+                                            <ConstraintInfo goal={goal} />
+                                        </div>
+
+                                        {/* Logged Value Display */}
+                                        {entry && (
+                                            <div className="text-right">
+                                                <span className="text-emerald-400 font-semibold text-sm">
+                                                    Logged: {entry.value}
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
+                            )
+                        )}
+                        {todaysHabits.length === 0 && (
+                            <div className="text-center py-8 px-4 bg-slate-800 rounded-lg">
+                                <p className="text-slate-400">
+                                    No habits scheduled for today.
+                                </p>
+                                <p className="text-slate-500 text-sm mt-2">
+                                    You can add monthly goals from the 'Edit
+                                    Habits' page.
+                                </p>
                             </div>
-                        ))}
+                        )}
                     </div>
                 </section>
             </main>
+
+            {/* Habit Logging Dialog */}
+            {selectedHabit && (
+                <HabitLoggingDialog
+                    isOpen={dialogOpen}
+                    onClose={() => {
+                        setDialogOpen(false);
+                        setSelectedHabit(null);
+                    }}
+                    monthlyGoal={selectedHabit.goal}
+                    targetDate={selectedHabit.targetDate}
+                    existingEntry={selectedHabit.existingEntry}
+                />
+            )}
         </div>
     );
 }

@@ -14,7 +14,7 @@ import {
     Calendar,
     Lightbulb,
 } from 'lucide-react';
-import { collection, addDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 // Create New Habit Template Modal
@@ -118,14 +118,52 @@ function CreateHabitTemplateModal({
 
 export default function AddHabitPage() {
     const { currentUserProfile } = useProfile();
-    const { habitTemplates } = useHabits();
+    const { habitTemplates, createHabitTemplate, createMonthlyGoal } =
+        useHabits();
     const router = useRouter();
 
     const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
     const [frequency, setFrequency] = useState(3);
     const [targetValue, setTargetValue] = useState(1);
+    const [hasTargetValue, setHasTargetValue] = useState(false);
+    const [period, setPeriod] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY'>(
+        'WEEKLY'
+    );
+    const [uiType, setUiType] = useState<
+        'CHECKBOX' | 'NUMBER_INPUT' | 'TIME_INPUT' | 'OPTION_SELECT'
+    >('CHECKBOX');
+    const [uiOptions, setUiOptions] = useState('');
+
+    // Grace Days Constraint
+    const [graceDays, setGraceDays] = useState(0);
+    const [hasGraceDays, setHasGraceDays] = useState(false);
+    const [gracePeriod, setGracePeriod] = useState<'WEEKLY' | 'MONTHLY'>(
+        'WEEKLY'
+    );
+
+    // Value Frequency Constraint
+    const [hasValueConstraint, setHasValueConstraint] = useState(false);
+    const [valueConstraintFreq, setValueConstraintFreq] = useState(3);
+    const [valueConstraintPeriod, setValueConstraintPeriod] = useState<
+        'WEEKLY' | 'MONTHLY'
+    >('WEEKLY');
+    const [valueConstraintOperator, setValueConstraintOperator] = useState<
+        'EQUALS' | 'NOT_EQUALS' | 'GREATER_THAN' | 'LESS_THAN'
+    >('NOT_EQUALS');
+    const [valueConstraintValue, setValueConstraintValue] = useState('');
+
+    // Next-day completion option
+    const [allowNextDayCompletion, setAllowNextDayCompletion] = useState(false);
+
     const [isAdding, setIsAdding] = useState(false);
     const [showCreateModal, setShowCreateModal] = useState(false);
+
+    useEffect(() => {
+        // When UI type changes, reset target value if it's not applicable
+        if (uiType === 'CHECKBOX' || uiType === 'OPTION_SELECT') {
+            setHasTargetValue(false);
+        }
+    }, [uiType]);
 
     // Available habit templates (not currently active this month)
     const currentMonth = new Date().toISOString().slice(0, 7);
@@ -137,18 +175,11 @@ export default function AddHabitPage() {
         if (!currentUserProfile) return;
 
         try {
-            const habitId = `habit_${Date.now()}_${Math.random()
-                .toString(36)
-                .substr(2, 9)}`;
-
-            // Create the habit template
-            const habitDocRef = doc(db, 'habits', habitId);
-            await setDoc(habitDocRef, {
-                habitId,
-                userId: currentUserProfile.uid,
+            // Create the habit template using the useHabits hook
+            await createHabitTemplate({
                 name: templateData.name,
                 description: templateData.description,
-                createdAt: new Date().toISOString(),
+                icon: '📋', // Add default icon
             });
         } catch (error) {
             console.error('Error creating habit template:', error);
@@ -161,29 +192,66 @@ export default function AddHabitPage() {
 
         setIsAdding(true);
         try {
-            // Create monthly goal for current month
-            await addDoc(collection(db, 'monthlyGoals'), {
-                userId: currentUserProfile.uid,
+            // Build constraints array
+            const constraints: any[] = [];
+
+            // Add Grace Days Constraint if enabled
+            if (hasGraceDays && graceDays > 0) {
+                constraints.push({
+                    type: 'GRACE_DAYS',
+                    period: gracePeriod,
+                    allowance: graceDays,
+                });
+            }
+
+            // Add Value Frequency Constraint if enabled
+            if (
+                hasValueConstraint &&
+                valueConstraintFreq > 0 &&
+                valueConstraintValue.trim()
+            ) {
+                constraints.push({
+                    type: 'VALUE_FREQUENCY',
+                    period: valueConstraintPeriod,
+                    frequency: valueConstraintFreq,
+                    targetValue: {
+                        operator: valueConstraintOperator,
+                        value: valueConstraintValue.trim(),
+                    },
+                });
+            }
+
+            // Create monthly goal for current month using the hook
+            await createMonthlyGoal({
                 habitId: selectedTemplate.habitId,
                 month: currentMonth,
                 ui: {
-                    type: 'CHECKBOX',
+                    type: uiType,
+                    ...(uiType === 'OPTION_SELECT' && {
+                        options: uiOptions
+                            .split(',')
+                            .map((opt) => opt.trim())
+                            .filter(Boolean),
+                    }),
                 },
                 goal: {
-                    period: 'WEEKLY',
+                    period: period,
                     frequency: frequency,
-                    targetValue: {
-                        operator: 'GREATER_THAN',
-                        value: targetValue,
-                    },
+                    ...(hasTargetValue && {
+                        targetValue: {
+                            operator: 'GREATER_THAN',
+                            value: targetValue,
+                        },
+                    }),
                 },
                 logging: {
                     window: {
                         startOffsetHours: 0,
                         endOffsetHours: 24,
                     },
+                    allowNextDayCompletion: allowNextDayCompletion,
                 },
-                constraints: [],
+                constraints: constraints,
             });
 
             // Create activity log entry
@@ -317,10 +385,96 @@ export default function AddHabitPage() {
                         </h2>
 
                         <div className="space-y-4">
+                            {/* Entry Type */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                    Entry Type
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    <CheckCircle
+                                        className="text-slate-400"
+                                        size={16}
+                                    />
+                                    <select
+                                        value={uiType}
+                                        onChange={(e) => {
+                                            setUiType(e.target.value as any);
+                                            if (
+                                                e.target.value !==
+                                                'OPTION_SELECT'
+                                            ) {
+                                                setUiOptions('');
+                                            }
+                                        }}
+                                        className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                    >
+                                        <option value="CHECKBOX">
+                                            Checkbox (Simple Yes/No)
+                                        </option>
+                                        <option value="NUMBER_INPUT">
+                                            Number (e.g., miles, reps)
+                                        </option>
+                                        <option value="TIME_INPUT">
+                                            Time (e.g., duration)
+                                        </option>
+                                        <option value="OPTION_SELECT">
+                                            Options (Select from a list)
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Options for OPTION_SELECT */}
+                            {uiType === 'OPTION_SELECT' && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                                        Options (comma-separated)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={uiOptions}
+                                        onChange={(e) =>
+                                            setUiOptions(e.target.value)
+                                        }
+                                        placeholder="e.g., Walk, Run, Bike, Swim"
+                                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                    />
+                                </div>
+                            )}
+
+                            {/* Period */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                    Goal Period
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    <Calendar
+                                        className="text-slate-400"
+                                        size={16}
+                                    />
+                                    <select
+                                        value={period}
+                                        onChange={(e) =>
+                                            setPeriod(
+                                                e.target.value as
+                                                    | 'DAILY'
+                                                    | 'WEEKLY'
+                                                    | 'MONTHLY'
+                                            )
+                                        }
+                                        className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                    >
+                                        <option value="DAILY">Daily</option>
+                                        <option value="WEEKLY">Weekly</option>
+                                        <option value="MONTHLY">Monthly</option>
+                                    </select>
+                                </div>
+                            </div>
+
                             {/* Frequency */}
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-2">
-                                    Weekly Frequency
+                                    Frequency ({period.toLowerCase()})
                                 </label>
                                 <div className="flex items-center gap-2">
                                     <Hash
@@ -330,7 +484,13 @@ export default function AddHabitPage() {
                                     <input
                                         type="number"
                                         min="1"
-                                        max="7"
+                                        max={
+                                            period === 'DAILY'
+                                                ? 1
+                                                : period === 'WEEKLY'
+                                                ? 7
+                                                : 31
+                                        }
                                         value={frequency}
                                         onChange={(e) =>
                                             setFrequency(
@@ -340,48 +500,313 @@ export default function AddHabitPage() {
                                         className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                                     />
                                     <span className="text-sm text-slate-400">
-                                        times per week
+                                        times per {period.toLowerCase()}
                                     </span>
                                 </div>
                             </div>
 
+                            {/* Target Value Toggle */}
+                            {(uiType === 'NUMBER_INPUT' ||
+                                uiType === 'TIME_INPUT') && (
+                                <div>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={hasTargetValue}
+                                            onChange={(e) =>
+                                                setHasTargetValue(
+                                                    e.target.checked
+                                                )
+                                            }
+                                            className="w-4 h-4 text-cyan-600 bg-slate-700 border-slate-600 rounded focus:ring-cyan-500"
+                                        />
+                                        <span className="text-sm font-medium text-slate-300">
+                                            Set target value per entry
+                                        </span>
+                                    </label>
+                                </div>
+                            )}
+
                             {/* Target Value */}
+                            {hasTargetValue && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                                        Target Value
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <Target
+                                            className="text-slate-400"
+                                            size={16}
+                                        />
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={targetValue}
+                                            onChange={(e) =>
+                                                setTargetValue(
+                                                    parseInt(e.target.value)
+                                                )
+                                            }
+                                            className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                        />
+                                        <span className="text-sm text-slate-400">
+                                            units minimum
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Grace Days Toggle */}
                             <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-2">
-                                    Target Value
-                                </label>
-                                <div className="flex items-center gap-2">
-                                    <Target
-                                        className="text-slate-400"
-                                        size={16}
-                                    />
+                                <label className="flex items-center gap-2 cursor-pointer">
                                     <input
-                                        type="number"
-                                        min="1"
-                                        value={targetValue}
+                                        type="checkbox"
+                                        checked={hasGraceDays}
                                         onChange={(e) =>
-                                            setTargetValue(
-                                                parseInt(e.target.value)
+                                            setHasGraceDays(e.target.checked)
+                                        }
+                                        className="w-4 h-4 text-cyan-600 bg-slate-700 border-slate-600 rounded focus:ring-cyan-500"
+                                    />
+                                    <span className="text-sm font-medium text-slate-300">
+                                        Allow grace days (forgiveness for missed
+                                        days)
+                                    </span>
+                                </label>
+                            </div>
+
+                            {/* Next-Day Completion Option */}
+                            <div className="flex items-center gap-3">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={allowNextDayCompletion}
+                                        onChange={(e) =>
+                                            setAllowNextDayCompletion(
+                                                e.target.checked
                                             )
                                         }
-                                        className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                        className="w-4 h-4 text-cyan-600 bg-slate-700 border-slate-600 rounded focus:ring-cyan-500 focus:ring-2"
                                     />
-                                    <span className="text-sm text-slate-400">
-                                        units
+                                    <span className="text-sm font-medium text-slate-300">
+                                        Allow next-day completion (for
+                                        sleep/bedtime habits)
                                     </span>
-                                </div>
+                                </label>
                             </div>
+
+                            {/* Grace Days Configuration */}
+                            {hasGraceDays && (
+                                <div className="space-y-3 pl-6 border-l-2 border-slate-600">
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                                            Grace Period
+                                        </label>
+                                        <select
+                                            value={gracePeriod}
+                                            onChange={(e) =>
+                                                setGracePeriod(
+                                                    e.target.value as
+                                                        | 'WEEKLY'
+                                                        | 'MONTHLY'
+                                                )
+                                            }
+                                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                        >
+                                            <option value="WEEKLY">
+                                                Weekly
+                                            </option>
+                                            <option value="MONTHLY">
+                                                Monthly
+                                            </option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                                            Allowed Missed Days
+                                        </label>
+                                        <div className="flex items-center gap-2">
+                                            <Clock
+                                                className="text-slate-400"
+                                                size={16}
+                                            />
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                max={
+                                                    gracePeriod === 'WEEKLY'
+                                                        ? 6
+                                                        : 30
+                                                }
+                                                value={graceDays}
+                                                onChange={(e) =>
+                                                    setGraceDays(
+                                                        parseInt(e.target.value)
+                                                    )
+                                                }
+                                                className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                            />
+                                            <span className="text-sm text-slate-400">
+                                                missed days per{' '}
+                                                {gracePeriod.toLowerCase()}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Value Frequency Constraint Toggle */}
+                            <div>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={hasValueConstraint}
+                                        onChange={(e) =>
+                                            setHasValueConstraint(
+                                                e.target.checked
+                                            )
+                                        }
+                                        className="w-4 h-4 text-cyan-600 bg-slate-700 border-slate-600 rounded focus:ring-cyan-500"
+                                    />
+                                    <span className="text-sm font-medium text-slate-300">
+                                        Add value-based requirement
+                                    </span>
+                                </label>
+                                <p className="text-xs text-slate-400 mt-1 ml-6">
+                                    e.g., "Do something other than walking 3
+                                    times per week"
+                                </p>
+                            </div>
+
+                            {/* Value Frequency Constraint Configuration */}
+                            {hasValueConstraint && (
+                                <div className="space-y-3 pl-6 border-l-2 border-slate-600">
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                                                Frequency
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                value={valueConstraintFreq}
+                                                onChange={(e) =>
+                                                    setValueConstraintFreq(
+                                                        parseInt(e.target.value)
+                                                    )
+                                                }
+                                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                                                Period
+                                            </label>
+                                            <select
+                                                value={valueConstraintPeriod}
+                                                onChange={(e) =>
+                                                    setValueConstraintPeriod(
+                                                        e.target.value as
+                                                            | 'WEEKLY'
+                                                            | 'MONTHLY'
+                                                    )
+                                                }
+                                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                            >
+                                                <option value="WEEKLY">
+                                                    Weekly
+                                                </option>
+                                                <option value="MONTHLY">
+                                                    Monthly
+                                                </option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                                            Value Condition
+                                        </label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <select
+                                                value={valueConstraintOperator}
+                                                onChange={(e) =>
+                                                    setValueConstraintOperator(
+                                                        e.target.value as any
+                                                    )
+                                                }
+                                                className="px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                            >
+                                                <option value="EQUALS">
+                                                    Equals
+                                                </option>
+                                                <option value="NOT_EQUALS">
+                                                    Not equals
+                                                </option>
+                                                <option value="GREATER_THAN">
+                                                    Greater than
+                                                </option>
+                                                <option value="LESS_THAN">
+                                                    Less than
+                                                </option>
+                                            </select>
+                                            <input
+                                                type="text"
+                                                placeholder="Value"
+                                                value={valueConstraintValue}
+                                                onChange={(e) =>
+                                                    setValueConstraintValue(
+                                                        e.target.value
+                                                    )
+                                                }
+                                                className="col-span-2 px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                            />
+                                        </div>
+                                        <p className="text-xs text-slate-400 mt-1">
+                                            Example: "NOT_EQUALS Walking" means{' '}
+                                            {valueConstraintFreq} entries per{' '}
+                                            {valueConstraintPeriod.toLowerCase()}{' '}
+                                            must not be "Walking"
+                                        </p>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Summary */}
                             <div className="bg-slate-700 rounded-lg p-4">
                                 <h3 className="text-sm font-medium text-slate-300 mb-2">
                                     Summary
                                 </h3>
-                                <p className="text-slate-100">
-                                    <strong>{selectedTemplate.name}</strong> -{' '}
-                                    {frequency} times per week, {targetValue}{' '}
-                                    units each time
-                                </p>
+                                <div className="space-y-2">
+                                    <p className="text-slate-100">
+                                        <strong>Primary Goal:</strong>{' '}
+                                        {selectedTemplate.name} - {frequency}{' '}
+                                        times per {period.toLowerCase()}
+                                        {hasTargetValue &&
+                                            `, ${targetValue} units minimum each time`}
+                                    </p>
+                                    {hasGraceDays && graceDays > 0 && (
+                                        <p className="text-cyan-300 text-sm">
+                                            <strong>Grace Days:</strong> Allow{' '}
+                                            {graceDays} missed days per{' '}
+                                            {gracePeriod.toLowerCase()}
+                                        </p>
+                                    )}
+                                    {hasValueConstraint &&
+                                        valueConstraintValue.trim() && (
+                                            <p className="text-emerald-300 text-sm">
+                                                <strong>
+                                                    Value Requirement:
+                                                </strong>{' '}
+                                                {valueConstraintFreq} entries
+                                                per{' '}
+                                                {valueConstraintPeriod.toLowerCase()}{' '}
+                                                must be{' '}
+                                                {valueConstraintOperator
+                                                    .toLowerCase()
+                                                    .replace('_', ' ')}{' '}
+                                                "{valueConstraintValue}"
+                                            </p>
+                                        )}
+                                </div>
                             </div>
                         </div>
                     </div>

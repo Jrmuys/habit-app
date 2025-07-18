@@ -30,7 +30,7 @@ export function useHabits() {
         try {
             // Subscribe to user's habit templates
             const templatesQuery = query(
-                collection(db, 'habitTemplates'),
+                collection(db, 'habits'),
                 where('userId', '==', user.uid)
             );
 
@@ -93,7 +93,7 @@ export function useHabits() {
         };
 
         try {
-            const docRef = await addDoc(collection(db, 'habitTemplates'), newTemplate);
+            const docRef = await addDoc(collection(db, 'habits'), newTemplate);
             return docRef.id;
         } catch (err) {
             throw new Error(err instanceof Error ? err.message : 'Failed to create habit template');
@@ -118,7 +118,7 @@ export function useHabits() {
 
     const updateHabitTemplate = async (habitId: string, updates: Partial<HabitTemplate>) => {
         try {
-            const templateRef = doc(db, 'habitTemplates', habitId);
+            const templateRef = doc(db, 'habits', habitId);
             await updateDoc(templateRef, updates);
         } catch (err) {
             throw new Error(err instanceof Error ? err.message : 'Failed to update habit template');
@@ -136,7 +136,7 @@ export function useHabits() {
 
     const deleteHabitTemplate = async (habitId: string) => {
         try {
-            const templateRef = doc(db, 'habitTemplates', habitId);
+            const templateRef = doc(db, 'habits', habitId);
             await deleteDoc(templateRef);
         } catch (err) {
             throw new Error(err instanceof Error ? err.message : 'Failed to delete habit template');

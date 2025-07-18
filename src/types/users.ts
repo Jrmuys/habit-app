@@ -41,5 +41,6 @@ export type ProfileContextType = {
     currentUserProfile: UserProfile | null;
     partnerProfile: UserProfile | null;
     loading: boolean;
+    isSingleUser: boolean;
     refreshProfiles: () => Promise<void>;
 };

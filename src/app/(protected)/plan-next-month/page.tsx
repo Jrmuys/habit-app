@@ -476,6 +476,7 @@ export default function PlanNextMonthPage() {
                             startOffsetHours: 0,
                             endOffsetHours: 24,
                         },
+                        allowNextDayCompletion: false, // Default to false for new habits
                     },
                     constraints: [],
                 });

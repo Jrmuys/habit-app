@@ -36,12 +36,18 @@ function EditHabitModal({
     const [targetValue, setTargetValue] = useState(
         habit?.goal?.targetValue?.value || 1
     );
+    const [allowNextDayCompletion, setAllowNextDayCompletion] = useState(
+        habit?.logging?.allowNextDayCompletion || false
+    );
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
         if (habit) {
             setFrequency(habit.goal?.frequency || 3);
             setTargetValue(habit.goal?.targetValue?.value || 1);
+            setAllowNextDayCompletion(
+                habit.logging?.allowNextDayCompletion || false
+            );
         }
     }, [habit]);
 
@@ -64,6 +70,10 @@ function EditHabitModal({
                               operator: 'GREATER_THAN' as const,
                               value: targetValue,
                           },
+                },
+                logging: {
+                    ...habit.logging,
+                    allowNextDayCompletion,
                 },
             };
             await onSave(updatedHabit);
@@ -144,6 +154,24 @@ function EditHabitModal({
                                 units
                             </span>
                         </div>
+                    </div>
+
+                    {/* Next-Day Completion Option */}
+                    <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={allowNextDayCompletion}
+                                onChange={(e) =>
+                                    setAllowNextDayCompletion(e.target.checked)
+                                }
+                                className="w-4 h-4 text-cyan-600 bg-slate-700 border-slate-600 rounded focus:ring-cyan-500 focus:ring-2"
+                            />
+                            <span className="text-sm font-medium text-slate-300">
+                                Allow next-day completion (for sleep/bedtime
+                                habits)
+                            </span>
+                        </label>
                     </div>
 
                     {/* Action Buttons */}

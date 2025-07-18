@@ -1,3 +1,4 @@
+// HabitTemplate represents the basic template stored in 'habits' collection
 export type HabitTemplate = {
     habitId: string;
     userId: string;
@@ -28,8 +29,8 @@ export type HabitEntry = {
 };
 
 export type UIRule = {
-    type: 'CHECKBOX' | 'COUNTER' | 'TIME_PICKER' | 'MULTI_CHOICE';
-    options?: string[];
+    type: "CHECKBOX" | "NUMBER_INPUT" | "TIME_INPUT" | "OPTION_SELECT";
+    options?: string[]; // For "MULTI_CHOICE"
 };
 
 export type GoalRule = {
@@ -48,6 +49,7 @@ export type LoggingRule = {
         startOffsetHours: number;
         endOffsetHours: number;
     };
+    allowNextDayCompletion?: boolean; // For sleep/end-of-day habits
 };
 
 type BaseConstraint = {

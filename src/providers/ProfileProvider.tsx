@@ -15,6 +15,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         null
     );
     const [loading, setLoading] = useState(true);
+    const [isSingleUser, setIsSingleUser] = useState(false);
 
     // Helper function to handle user profile updates
     const handleUserProfile = (
@@ -41,6 +42,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
                 subscribeToCoupleCallback(userProfileData.coupleId);
             } else {
                 setPartnerProfile(null);
+                setIsSingleUser(true);
             }
         } else {
             setCurrentUserProfile(null);
@@ -97,6 +99,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     const handleCoupleData = (coupleDocSnap: any) => {
         if (!coupleDocSnap.exists()) {
             setPartnerProfile(null);
+            setIsSingleUser(true);
             return null;
         }
 
@@ -107,12 +110,14 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
 
         if (!isCouple(coupleData) || !user) {
             setPartnerProfile(null);
+            setIsSingleUser(true);
             return null;
         }
 
         const partnerUid = coupleData.members.find((uid) => uid !== user.uid);
         if (!partnerUid) {
             setPartnerProfile(null);
+            setIsSingleUser(true);
             return null;
         }
 
@@ -130,6 +135,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
             setCurrentUserProfile(null);
             setPartnerProfile(null);
             setLoading(false);
+            setIsSingleUser(true);
             return;
         }
 
@@ -188,6 +194,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
         currentUserProfile,
         partnerProfile,
         loading,
+        isSingleUser,
         refreshProfiles,
     };
     console.log('ProfileProvider value:', value);
