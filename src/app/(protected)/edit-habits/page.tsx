@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { doc, updateDoc, addDoc, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { MonthlyGoal, HabitTemplate, ConstraintRule, GraceDaysConstraint, ValueFrequencyConstraint } from '@/types/habits';
 
 // Edit Modal Component
 function EditHabitModal({
@@ -28,9 +29,9 @@ function EditHabitModal({
 }: {
     isOpen: boolean;
     onClose: () => void;
-    habit: any;
-    template: any;
-    onSave: (updatedHabit: any) => void;
+    habit: MonthlyGoal;
+    template: HabitTemplate;
+    onSave: (updatedHabit: MonthlyGoal) => void;
 }) {
     const [frequency, setFrequency] = useState(habit?.goal?.frequency || 3);
     const [targetValue, setTargetValue] = useState(
@@ -55,36 +56,36 @@ function EditHabitModal({
 
     // Constraints
     const [hasGraceDays, setHasGraceDays] = useState(
-        Boolean(habit?.constraints?.find((c: any) => c.type === 'GRACE_DAYS'))
+        Boolean(habit?.constraints?.find((c) => c.type === 'GRACE_DAYS'))
     );
     const [graceDays, setGraceDays] = useState(
-        habit?.constraints?.find((c: any) => c.type === 'GRACE_DAYS')
+        (habit?.constraints?.find((c) => c.type === 'GRACE_DAYS') as GraceDaysConstraint)
             ?.allowance || 0
     );
     const [gracePeriod, setGracePeriod] = useState(
-        habit?.constraints?.find((c: any) => c.type === 'GRACE_DAYS')?.period ||
+        habit?.constraints?.find((c) => c.type === 'GRACE_DAYS')?.period ||
             'WEEKLY'
     );
 
     const [hasValueConstraint, setHasValueConstraint] = useState(
         Boolean(
-            habit?.constraints?.find((c: any) => c.type === 'VALUE_FREQUENCY')
+            habit?.constraints?.find((c) => c.type === 'VALUE_FREQUENCY')
         )
     );
     const [valueConstraintFreq, setValueConstraintFreq] = useState(
-        habit?.constraints?.find((c: any) => c.type === 'VALUE_FREQUENCY')
+        (habit?.constraints?.find((c) => c.type === 'VALUE_FREQUENCY') as ValueFrequencyConstraint)
             ?.frequency || 3
     );
     const [valueConstraintPeriod, setValueConstraintPeriod] = useState(
-        habit?.constraints?.find((c: any) => c.type === 'VALUE_FREQUENCY')
+        habit?.constraints?.find((c) => c.type === 'VALUE_FREQUENCY')
             ?.period || 'WEEKLY'
     );
     const [valueConstraintOperator, setValueConstraintOperator] = useState(
-        habit?.constraints?.find((c: any) => c.type === 'VALUE_FREQUENCY')
+        (habit?.constraints?.find((c) => c.type === 'VALUE_FREQUENCY') as ValueFrequencyConstraint)
             ?.targetValue?.operator || 'GREATER_THAN'
     );
     const [valueConstraintValue, setValueConstraintValue] = useState(
-        habit?.constraints?.find((c: any) => c.type === 'VALUE_FREQUENCY')
+        (habit?.constraints?.find((c) => c.type === 'VALUE_FREQUENCY') as ValueFrequencyConstraint)
             ?.targetValue?.value || ''
     );
 
@@ -107,11 +108,11 @@ function EditHabitModal({
 
             // Initialize constraints
             const graceDaysConstraint = habit.constraints?.find(
-                (c: any) => c.type === 'GRACE_DAYS'
-            );
+                (c) => c.type === 'GRACE_DAYS'
+            ) as GraceDaysConstraint | undefined;
             const valueFreqConstraint = habit.constraints?.find(
-                (c: any) => c.type === 'VALUE_FREQUENCY'
-            );
+                (c) => c.type === 'VALUE_FREQUENCY'
+            ) as ValueFrequencyConstraint | undefined;
 
             setHasGraceDays(Boolean(graceDaysConstraint));
             setGraceDays(graceDaysConstraint?.allowance || 0);
@@ -135,14 +136,14 @@ function EditHabitModal({
         setIsSaving(true);
         try {
             // Build constraints array
-            const constraints = [];
+            const constraints: ConstraintRule[] = [];
 
             if (hasGraceDays && graceDays > 0) {
                 constraints.push({
                     type: 'GRACE_DAYS',
-                    period: gracePeriod,
+                    period: gracePeriod as 'WEEKLY' | 'MONTHLY',
                     allowance: graceDays,
-                });
+                } as GraceDaysConstraint);
             }
 
             if (
@@ -152,16 +153,16 @@ function EditHabitModal({
             ) {
                 constraints.push({
                     type: 'VALUE_FREQUENCY',
-                    period: valueConstraintPeriod,
+                    period: valueConstraintPeriod as 'WEEKLY' | 'MONTHLY',
                     frequency: valueConstraintFreq,
                     targetValue: {
                         operator: valueConstraintOperator,
                         value: valueConstraintValue,
                     },
-                });
+                } as ValueFrequencyConstraint);
             }
 
-            const updatedHabit = {
+            const updatedHabit: MonthlyGoal = {
                 ...habit,
                 ui: {
                     type: uiType,
@@ -288,7 +289,7 @@ function EditHabitModal({
                         <select
                             value={uiType}
                             onChange={(e) => {
-                                setUiType(e.target.value as any);
+                                setUiType(e.target.value as 'CHECKBOX' | 'NUMBER_INPUT' | 'TIME_INPUT' | 'OPTION_SELECT');
                                 // Reset target value when changing to checkbox or option select
                                 if (
                                     e.target.value === 'CHECKBOX' ||
@@ -353,7 +354,7 @@ function EditHabitModal({
                                 <select
                                     value={targetOperator}
                                     onChange={(e) =>
-                                        setTargetOperator(e.target.value as any)
+                                        setTargetOperator(e.target.value as 'EQUALS' | 'NOT_EQUALS' | 'GREATER_THAN' | 'LESS_THAN' | 'BEFORE' | 'AFTER')
                                     }
                                     className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                                 >
@@ -395,7 +396,7 @@ function EditHabitModal({
                                                 ? '1'
                                                 : undefined
                                         }
-                                        value={targetValue}
+                                        value={targetValue.toString()}
                                         onChange={(e) =>
                                             setTargetValue(
                                                 uiType === 'TIME_INPUT'
@@ -572,7 +573,7 @@ function EditHabitModal({
                                     value={valueConstraintOperator}
                                     onChange={(e) =>
                                         setValueConstraintOperator(
-                                            e.target.value as any
+                                            e.target.value as 'EQUALS' | 'NOT_EQUALS' | 'GREATER_THAN' | 'LESS_THAN'
                                         )
                                     }
                                     className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
@@ -593,7 +594,7 @@ function EditHabitModal({
                                 </label>
                                 <input
                                     type="text"
-                                    value={valueConstraintValue}
+                                    value={valueConstraintValue.toString()}
                                     onChange={(e) =>
                                         setValueConstraintValue(e.target.value)
                                     }
@@ -632,7 +633,7 @@ export default function EditHabitsPage() {
     const { habitTemplates, monthlyGoals } = useHabits();
     const router = useRouter();
 
-    const [editingHabit, setEditingHabit] = useState<any>(null);
+    const [editingHabit, setEditingHabit] = useState<MonthlyGoal | null>(null);
     const [showEditModal, setShowEditModal] = useState(false);
 
     // Get current month's habits
@@ -643,12 +644,12 @@ export default function EditHabitsPage() {
             goal.month === currentMonth
     );
 
-    const handleEditHabit = (habit: any) => {
+    const handleEditHabit = (habit: MonthlyGoal) => {
         setEditingHabit(habit);
         setShowEditModal(true);
     };
 
-    const handleSaveHabit = async (updatedHabit: any) => {
+    const handleSaveHabit = async (updatedHabit: MonthlyGoal) => {
         if (!currentUserProfile) return;
 
         try {
@@ -738,7 +739,7 @@ export default function EditHabitsPage() {
                             No Active Habits
                         </h3>
                         <p className="text-slate-400 mb-6">
-                            You don't have any active habits for this month yet.
+                            You don&apos;t have any active habits for this month yet.
                         </p>
                         <button
                             onClick={() => router.push('/add-habit')}
@@ -805,19 +806,19 @@ export default function EditHabitsPage() {
             </main>
 
             {/* Edit Modal */}
-            <EditHabitModal
-                isOpen={showEditModal}
-                onClose={() => setShowEditModal(false)}
-                habit={editingHabit}
-                template={
-                    editingHabit
-                        ? habitTemplates.find(
-                              (t) => t.habitId === editingHabit.habitId
-                          )
-                        : null
-                }
-                onSave={handleSaveHabit}
-            />
+            {editingHabit && (
+                <EditHabitModal
+                    isOpen={showEditModal}
+                    onClose={() => setShowEditModal(false)}
+                    habit={editingHabit}
+                    template={
+                        habitTemplates.find(
+                            (t) => t.habitId === editingHabit.habitId
+                        )!
+                    }
+                    onSave={handleSaveHabit}
+                />
+            )}
         </div>
     );
 }
