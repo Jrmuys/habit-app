@@ -39,6 +39,55 @@ function EditHabitModal({
     const [allowNextDayCompletion, setAllowNextDayCompletion] = useState(
         habit?.logging?.allowNextDayCompletion || false
     );
+
+    // Additional UI and goal configuration
+    const [uiType, setUiType] = useState(habit?.ui?.type || 'CHECKBOX');
+    const [uiOptions, setUiOptions] = useState(
+        habit?.ui?.options?.join(', ') || ''
+    );
+    const [period, setPeriod] = useState(habit?.goal?.period || 'WEEKLY');
+    const [targetOperator, setTargetOperator] = useState(
+        habit?.goal?.targetValue?.operator || 'GREATER_THAN'
+    );
+    const [hasTargetValue, setHasTargetValue] = useState(
+        Boolean(habit?.goal?.targetValue)
+    );
+
+    // Constraints
+    const [hasGraceDays, setHasGraceDays] = useState(
+        Boolean(habit?.constraints?.find((c: any) => c.type === 'GRACE_DAYS'))
+    );
+    const [graceDays, setGraceDays] = useState(
+        habit?.constraints?.find((c: any) => c.type === 'GRACE_DAYS')
+            ?.allowance || 0
+    );
+    const [gracePeriod, setGracePeriod] = useState(
+        habit?.constraints?.find((c: any) => c.type === 'GRACE_DAYS')?.period ||
+            'WEEKLY'
+    );
+
+    const [hasValueConstraint, setHasValueConstraint] = useState(
+        Boolean(
+            habit?.constraints?.find((c: any) => c.type === 'VALUE_FREQUENCY')
+        )
+    );
+    const [valueConstraintFreq, setValueConstraintFreq] = useState(
+        habit?.constraints?.find((c: any) => c.type === 'VALUE_FREQUENCY')
+            ?.frequency || 3
+    );
+    const [valueConstraintPeriod, setValueConstraintPeriod] = useState(
+        habit?.constraints?.find((c: any) => c.type === 'VALUE_FREQUENCY')
+            ?.period || 'WEEKLY'
+    );
+    const [valueConstraintOperator, setValueConstraintOperator] = useState(
+        habit?.constraints?.find((c: any) => c.type === 'VALUE_FREQUENCY')
+            ?.targetValue?.operator || 'GREATER_THAN'
+    );
+    const [valueConstraintValue, setValueConstraintValue] = useState(
+        habit?.constraints?.find((c: any) => c.type === 'VALUE_FREQUENCY')
+            ?.targetValue?.value || ''
+    );
+
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
@@ -48,6 +97,35 @@ function EditHabitModal({
             setAllowNextDayCompletion(
                 habit.logging?.allowNextDayCompletion || false
             );
+            setUiType(habit.ui?.type || 'CHECKBOX');
+            setUiOptions(habit.ui?.options?.join(', ') || '');
+            setPeriod(habit.goal?.period || 'WEEKLY');
+            setTargetOperator(
+                habit.goal?.targetValue?.operator || 'GREATER_THAN'
+            );
+            setHasTargetValue(Boolean(habit.goal?.targetValue));
+
+            // Initialize constraints
+            const graceDaysConstraint = habit.constraints?.find(
+                (c: any) => c.type === 'GRACE_DAYS'
+            );
+            const valueFreqConstraint = habit.constraints?.find(
+                (c: any) => c.type === 'VALUE_FREQUENCY'
+            );
+
+            setHasGraceDays(Boolean(graceDaysConstraint));
+            setGraceDays(graceDaysConstraint?.allowance || 0);
+            setGracePeriod(graceDaysConstraint?.period || 'WEEKLY');
+
+            setHasValueConstraint(Boolean(valueFreqConstraint));
+            setValueConstraintFreq(valueFreqConstraint?.frequency || 3);
+            setValueConstraintPeriod(valueFreqConstraint?.period || 'WEEKLY');
+            setValueConstraintOperator(
+                valueFreqConstraint?.targetValue?.operator || 'GREATER_THAN'
+            );
+            setValueConstraintValue(
+                valueFreqConstraint?.targetValue?.value || ''
+            );
         }
     }, [habit]);
 
@@ -56,25 +134,60 @@ function EditHabitModal({
     const handleSave = async () => {
         setIsSaving(true);
         try {
+            // Build constraints array
+            const constraints = [];
+
+            if (hasGraceDays && graceDays > 0) {
+                constraints.push({
+                    type: 'GRACE_DAYS',
+                    period: gracePeriod,
+                    allowance: graceDays,
+                });
+            }
+
+            if (
+                hasValueConstraint &&
+                valueConstraintFreq > 0 &&
+                valueConstraintValue.toString().trim()
+            ) {
+                constraints.push({
+                    type: 'VALUE_FREQUENCY',
+                    period: valueConstraintPeriod,
+                    frequency: valueConstraintFreq,
+                    targetValue: {
+                        operator: valueConstraintOperator,
+                        value: valueConstraintValue,
+                    },
+                });
+            }
+
             const updatedHabit = {
                 ...habit,
+                ui: {
+                    type: uiType,
+                    ...(uiType === 'OPTION_SELECT' && {
+                        options: uiOptions
+                            .split(',')
+                            .map((opt: string) => opt.trim())
+                            .filter(Boolean),
+                    }),
+                },
                 goal: {
                     ...habit.goal,
+                    period: period,
                     frequency,
-                    targetValue: habit.goal?.targetValue
-                        ? {
-                              ...habit.goal.targetValue,
-                              value: targetValue,
-                          }
-                        : {
-                              operator: 'GREATER_THAN' as const,
-                              value: targetValue,
-                          },
+                    ...(hasTargetValue && {
+                        targetValue: {
+                            operator: targetOperator,
+                            value: targetValue,
+                        },
+                    }),
                 },
                 logging: {
                     ...habit.logging,
                     allowNextDayCompletion,
                 },
+                constraints,
             };
             await onSave(updatedHabit);
             onClose();
@@ -87,8 +200,8 @@ function EditHabitModal({
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-800 rounded-lg p-6 w-full max-w-md">
-                <div className="flex justify-between items-center mb-6">
+            <div className="bg-slate-800 rounded-lg w-full max-w-md max-h-[90vh] flex flex-col">
+                <div className="flex justify-between items-center p-6 pb-4 border-b border-slate-700">
                     <h3 className="text-xl font-semibold text-slate-100">
                         Edit Habit
                     </h3>
@@ -100,7 +213,7 @@ function EditHabitModal({
                     </button>
                 </div>
 
-                <div className="space-y-4">
+                <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
                     {/* Habit Name */}
                     <div>
                         <h4 className="text-lg font-medium text-slate-100 mb-2">
@@ -114,14 +227,20 @@ function EditHabitModal({
                     {/* Frequency */}
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Weekly Frequency
+                            Frequency
                         </label>
                         <div className="flex items-center gap-2">
                             <Hash className="text-slate-400" size={16} />
                             <input
                                 type="number"
                                 min="1"
-                                max="7"
+                                max={
+                                    period === 'DAILY'
+                                        ? 1
+                                        : period === 'WEEKLY'
+                                        ? 7
+                                        : 30
+                                }
                                 value={frequency}
                                 onChange={(e) =>
                                     setFrequency(parseInt(e.target.value))
@@ -129,32 +248,172 @@ function EditHabitModal({
                                 className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                             />
                             <span className="text-sm text-slate-400">
-                                times per week
+                                times per{' '}
+                                {period.toLowerCase().replace('ly', '')}
                             </span>
                         </div>
                     </div>
 
-                    {/* Target Value */}
+                    {/* Period */}
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Target Value
+                            Goal Period
                         </label>
                         <div className="flex items-center gap-2">
-                            <Target className="text-slate-400" size={16} />
-                            <input
-                                type="number"
-                                min="1"
-                                value={targetValue}
+                            <Calendar className="text-slate-400" size={16} />
+                            <select
+                                value={period}
                                 onChange={(e) =>
-                                    setTargetValue(parseInt(e.target.value))
+                                    setPeriod(
+                                        e.target.value as
+                                            | 'DAILY'
+                                            | 'WEEKLY'
+                                            | 'MONTHLY'
+                                    )
                                 }
                                 className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
-                            />
-                            <span className="text-sm text-slate-400">
-                                units
-                            </span>
+                            >
+                                <option value="DAILY">Daily</option>
+                                <option value="WEEKLY">Weekly</option>
+                                <option value="MONTHLY">Monthly</option>
+                            </select>
                         </div>
                     </div>
+
+                    {/* UI Type */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                            Input Type
+                        </label>
+                        <select
+                            value={uiType}
+                            onChange={(e) => {
+                                setUiType(e.target.value as any);
+                                // Reset target value when changing to checkbox or option select
+                                if (
+                                    e.target.value === 'CHECKBOX' ||
+                                    e.target.value === 'OPTION_SELECT'
+                                ) {
+                                    setHasTargetValue(false);
+                                }
+                            }}
+                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                        >
+                            <option value="CHECKBOX">Simple Checkbox</option>
+                            <option value="NUMBER_INPUT">Number Input</option>
+                            <option value="TIME_INPUT">Time Input</option>
+                            <option value="OPTION_SELECT">
+                                Multiple Choice
+                            </option>
+                        </select>
+                    </div>
+
+                    {/* Options for OPTION_SELECT */}
+                    {uiType === 'OPTION_SELECT' && (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-2">
+                                Options (comma-separated)
+                            </label>
+                            <input
+                                type="text"
+                                value={uiOptions}
+                                onChange={(e) => setUiOptions(e.target.value)}
+                                placeholder="e.g., Walk, Run, Bike, Swim"
+                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                            />
+                        </div>
+                    )}
+
+                    {/* Target Value Toggle */}
+                    {(uiType === 'NUMBER_INPUT' || uiType === 'TIME_INPUT') && (
+                        <div className="flex items-center gap-3">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={hasTargetValue}
+                                    onChange={(e) =>
+                                        setHasTargetValue(e.target.checked)
+                                    }
+                                    className="w-4 h-4 text-cyan-600 bg-slate-700 border-slate-600 rounded focus:ring-cyan-500 focus:ring-2"
+                                />
+                                <span className="text-sm font-medium text-slate-300">
+                                    Set target value condition
+                                </span>
+                            </label>
+                        </div>
+                    )}
+
+                    {/* Target Value Configuration */}
+                    {hasTargetValue && (
+                        <div className="space-y-3 pl-6 border-l-2 border-slate-600">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                    Target Condition
+                                </label>
+                                <select
+                                    value={targetOperator}
+                                    onChange={(e) =>
+                                        setTargetOperator(e.target.value as any)
+                                    }
+                                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                >
+                                    <option value="GREATER_THAN">
+                                        Greater than
+                                    </option>
+                                    <option value="LESS_THAN">Less than</option>
+                                    <option value="EQUALS">Equals</option>
+                                    <option value="NOT_EQUALS">
+                                        Not equals
+                                    </option>
+                                    {uiType === 'TIME_INPUT' && (
+                                        <>
+                                            <option value="BEFORE">
+                                                Before
+                                            </option>
+                                            <option value="AFTER">After</option>
+                                        </>
+                                    )}
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                    Target Value
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    <Target
+                                        className="text-slate-400"
+                                        size={16}
+                                    />
+                                    <input
+                                        type={
+                                            uiType === 'TIME_INPUT'
+                                                ? 'time'
+                                                : 'number'
+                                        }
+                                        min={
+                                            uiType === 'NUMBER_INPUT'
+                                                ? '1'
+                                                : undefined
+                                        }
+                                        value={targetValue}
+                                        onChange={(e) =>
+                                            setTargetValue(
+                                                uiType === 'TIME_INPUT'
+                                                    ? e.target.value
+                                                    : parseInt(e.target.value)
+                                            )
+                                        }
+                                        className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                    />
+                                    <span className="text-sm text-slate-400">
+                                        {uiType === 'TIME_INPUT'
+                                            ? 'time'
+                                            : 'units'}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Next-Day Completion Option */}
                     <div className="flex items-center gap-3">
@@ -174,23 +433,194 @@ function EditHabitModal({
                         </label>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex gap-3 pt-4">
-                        <button
-                            onClick={onClose}
-                            className="flex-1 px-4 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={handleSave}
-                            disabled={isSaving}
-                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:bg-slate-600 transition-colors"
-                        >
-                            <Save size={16} />
-                            {isSaving ? 'Saving...' : 'Save Changes'}
-                        </button>
+                    {/* Grace Days */}
+                    <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={hasGraceDays}
+                                onChange={(e) =>
+                                    setHasGraceDays(e.target.checked)
+                                }
+                                className="w-4 h-4 text-cyan-600 bg-slate-700 border-slate-600 rounded focus:ring-cyan-500 focus:ring-2"
+                            />
+                            <span className="text-sm font-medium text-slate-300">
+                                Allow grace days (forgiveness for missed days)
+                            </span>
+                        </label>
                     </div>
+
+                    {/* Grace Days Configuration */}
+                    {hasGraceDays && (
+                        <div className="space-y-3 pl-6 border-l-2 border-slate-600">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                    Grace Period
+                                </label>
+                                <select
+                                    value={gracePeriod}
+                                    onChange={(e) =>
+                                        setGracePeriod(
+                                            e.target.value as
+                                                | 'WEEKLY'
+                                                | 'MONTHLY'
+                                        )
+                                    }
+                                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                >
+                                    <option value="WEEKLY">Weekly</option>
+                                    <option value="MONTHLY">Monthly</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                    Allowed Missed Days
+                                </label>
+                                <div className="flex items-center gap-2">
+                                    <Clock
+                                        className="text-slate-400"
+                                        size={16}
+                                    />
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max={gracePeriod === 'WEEKLY' ? 6 : 30}
+                                        value={graceDays}
+                                        onChange={(e) =>
+                                            setGraceDays(
+                                                parseInt(e.target.value)
+                                            )
+                                        }
+                                        className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                    />
+                                    <span className="text-sm text-slate-400">
+                                        missed days per{' '}
+                                        {gracePeriod.toLowerCase()}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Value Frequency Constraint */}
+                    <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={hasValueConstraint}
+                                onChange={(e) =>
+                                    setHasValueConstraint(e.target.checked)
+                                }
+                                className="w-4 h-4 text-cyan-600 bg-slate-700 border-slate-600 rounded focus:ring-cyan-500 focus:ring-2"
+                            />
+                            <span className="text-sm font-medium text-slate-300">
+                                Add value frequency constraint
+                            </span>
+                        </label>
+                    </div>
+
+                    {/* Value Frequency Configuration */}
+                    {hasValueConstraint && (
+                        <div className="space-y-3 pl-6 border-l-2 border-slate-600">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                                        Frequency
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="1"
+                                        max={
+                                            valueConstraintPeriod === 'WEEKLY'
+                                                ? 7
+                                                : 30
+                                        }
+                                        value={valueConstraintFreq}
+                                        onChange={(e) =>
+                                            setValueConstraintFreq(
+                                                parseInt(e.target.value)
+                                            )
+                                        }
+                                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                                        Period
+                                    </label>
+                                    <select
+                                        value={valueConstraintPeriod}
+                                        onChange={(e) =>
+                                            setValueConstraintPeriod(
+                                                e.target.value as
+                                                    | 'WEEKLY'
+                                                    | 'MONTHLY'
+                                            )
+                                        }
+                                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                    >
+                                        <option value="WEEKLY">Weekly</option>
+                                        <option value="MONTHLY">Monthly</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                    Condition
+                                </label>
+                                <select
+                                    value={valueConstraintOperator}
+                                    onChange={(e) =>
+                                        setValueConstraintOperator(
+                                            e.target.value as any
+                                        )
+                                    }
+                                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                >
+                                    <option value="GREATER_THAN">
+                                        Greater than
+                                    </option>
+                                    <option value="LESS_THAN">Less than</option>
+                                    <option value="EQUALS">Equals</option>
+                                    <option value="NOT_EQUALS">
+                                        Not equals
+                                    </option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                    Value
+                                </label>
+                                <input
+                                    type="text"
+                                    value={valueConstraintValue}
+                                    onChange={(e) =>
+                                        setValueConstraintValue(e.target.value)
+                                    }
+                                    placeholder="Enter constraint value"
+                                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Action Buttons - Fixed at bottom */}
+                <div className="flex gap-3 p-6 pt-4 border-t border-slate-700">
+                    <button
+                        onClick={onClose}
+                        className="flex-1 px-4 py-2 bg-slate-700 text-slate-300 rounded-lg hover:bg-slate-600 transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        disabled={isSaving}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:bg-slate-600 transition-colors"
+                    >
+                        <Save size={16} />
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                    </button>
                 </div>
             </div>
         </div>

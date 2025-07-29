@@ -110,9 +110,6 @@ export default function DashboardPage() {
         existingEntry: any;
     } | null>(null);
 
-    // Get current day of week (0 = Sunday, 1 = Monday, etc.)
-    const todayDayOfWeek = new Date().getDay();
-
     // Handle habit click
     const handleHabitClick = async (
         goal: MonthlyGoal,
@@ -181,11 +178,12 @@ export default function DashboardPage() {
         const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
         const currentDate = new Date();
 
-        // Get last 7 days
-        const last7Days = Array.from({ length: 7 }, (_, i) => {
+        // Get the current week (Sunday to Saturday)
+        const currentDayOfWeek = currentDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
+        const weekDays = Array.from({ length: 7 }, (_, i) => {
             const date = new Date(currentDate);
-            date.setDate(date.getDate() - (6 - i));
-            return date.toISOString().slice(0, 10); // YYYY-MM-DD format
+            date.setDate(date.getDate() - currentDayOfWeek + i); // Start from Sunday of current week
+            return date.toISOString().slice(0, 10);
         });
 
         const users = usersToShow.map((profile) => ({
@@ -200,7 +198,7 @@ export default function DashboardPage() {
                     goal.month === currentMonth
             );
 
-            const days = last7Days.map((date) => {
+            const days = weekDays.map((date) => {
                 // Check if user has any completed habits for this date
                 const dayEntries = habitEntries.filter(
                     (entry) =>
@@ -225,6 +223,9 @@ export default function DashboardPage() {
             };
         });
     }, [currentUserProfile, partnerProfile, monthlyGoals, habitEntries]);
+
+    // Get today's day index in the current week (0 = Sunday, 6 = Saturday)
+    const todayIndex = new Date().getDay();
 
     // Process yesterday's habits
     const yesterdayHabits = useMemo(() => {
@@ -283,7 +284,7 @@ export default function DashboardPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-900 text-slate-100">
+        <div className="min-h-screen bg-slate-900 text-slate-100 overflow-y-auto">
             <header className="p-4 flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-cyan-400">Dashboard</h1>
                 <div className="flex items-center gap-4">
@@ -293,16 +294,10 @@ export default function DashboardPage() {
                     >
                         <Edit3 className="h-6 w-6 text-slate-400" />
                     </button>
-                    <button className="p-2 rounded-full hover:bg-slate-800 transition-colors">
-                        <Calendar className="h-6 w-6 text-slate-400" />
-                    </button>
-                    <button className="p-2 rounded-full hover:bg-slate-800 transition-colors">
-                        <Settings className="h-6 w-6 text-slate-400" />
-                    </button>
                 </div>
             </header>
 
-            <main className="p-4 space-y-8">
+            <main className="p-4 space-y-8 pb-20">
                 {/* Weekly Progress Section */}
                 <section>
                     <h2 className="text-xl font-semibold text-slate-300 mb-4">
@@ -349,9 +344,8 @@ export default function DashboardPage() {
                                                                 : 'bg-red-500'
                                                             : 'bg-slate-700'
                                                     } ${
-                                                        dayIndex ===
-                                                        todayDayOfWeek
-                                                            ? 'ring-2 ring-teal-500'
+                                                        dayIndex === todayIndex
+                                                            ? 'ring-2 ring-purple-500'
                                                             : ''
                                                     }`}
                                                 />
