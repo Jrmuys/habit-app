@@ -52,7 +52,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
 
     // Helper function to create a new user profile
     const createUserProfile = async () => {
-        if (!user) return;
+        if (!user || !db) return;
 
         try {
             const newUserProfile: UserProfile = {
@@ -127,6 +127,12 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     };
 
     useEffect(() => {
+        // Don't set up Firestore listeners during build time
+        if (typeof window === 'undefined' || !db) {
+            setLoading(false);
+            return;
+        }
+
         let userProfileUnsubscribe: (() => void) | undefined;
         let coupleUnsubscribe: (() => void) | undefined;
         let partnerProfileUnsubscribe: (() => void) | undefined;

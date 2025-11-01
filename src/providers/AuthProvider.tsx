@@ -10,6 +10,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
+        // Don't set up auth listener during build time
+        if (typeof window === 'undefined' || !auth) {
+            setLoading(false);
+            return;
+        }
+
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             if (!user) {
                 setUser(null);
@@ -24,7 +30,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     const logout = async () => {
-        await signOut(auth);
+        if (auth) {
+            await signOut(auth);
+        }
     };
 
     const value = { user, loading, logout };

@@ -17,7 +17,13 @@ import {
 } from 'lucide-react';
 import { doc, updateDoc, addDoc, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { MonthlyGoal, HabitTemplate, ConstraintRule, GraceDaysConstraint, ValueFrequencyConstraint } from '@/types/habits';
+import {
+    MonthlyGoal,
+    HabitTemplate,
+    ConstraintRule,
+    GraceDaysConstraint,
+    ValueFrequencyConstraint,
+} from '@/types/habits';
 
 // Edit Modal Component
 function EditHabitModal({
@@ -59,8 +65,11 @@ function EditHabitModal({
         Boolean(habit?.constraints?.find((c) => c.type === 'GRACE_DAYS'))
     );
     const [graceDays, setGraceDays] = useState(
-        (habit?.constraints?.find((c) => c.type === 'GRACE_DAYS') as GraceDaysConstraint)
-            ?.allowance || 0
+        (
+            habit?.constraints?.find(
+                (c) => c.type === 'GRACE_DAYS'
+            ) as GraceDaysConstraint
+        )?.allowance || 0
     );
     const [gracePeriod, setGracePeriod] = useState(
         habit?.constraints?.find((c) => c.type === 'GRACE_DAYS')?.period ||
@@ -68,25 +77,32 @@ function EditHabitModal({
     );
 
     const [hasValueConstraint, setHasValueConstraint] = useState(
-        Boolean(
-            habit?.constraints?.find((c) => c.type === 'VALUE_FREQUENCY')
-        )
+        Boolean(habit?.constraints?.find((c) => c.type === 'VALUE_FREQUENCY'))
     );
     const [valueConstraintFreq, setValueConstraintFreq] = useState(
-        (habit?.constraints?.find((c) => c.type === 'VALUE_FREQUENCY') as ValueFrequencyConstraint)
-            ?.frequency || 3
+        (
+            habit?.constraints?.find(
+                (c) => c.type === 'VALUE_FREQUENCY'
+            ) as ValueFrequencyConstraint
+        )?.frequency || 3
     );
     const [valueConstraintPeriod, setValueConstraintPeriod] = useState(
-        habit?.constraints?.find((c) => c.type === 'VALUE_FREQUENCY')
-            ?.period || 'WEEKLY'
+        habit?.constraints?.find((c) => c.type === 'VALUE_FREQUENCY')?.period ||
+            'WEEKLY'
     );
     const [valueConstraintOperator, setValueConstraintOperator] = useState(
-        (habit?.constraints?.find((c) => c.type === 'VALUE_FREQUENCY') as ValueFrequencyConstraint)
-            ?.targetValue?.operator || 'GREATER_THAN'
+        (
+            habit?.constraints?.find(
+                (c) => c.type === 'VALUE_FREQUENCY'
+            ) as ValueFrequencyConstraint
+        )?.targetValue?.operator || 'GREATER_THAN'
     );
     const [valueConstraintValue, setValueConstraintValue] = useState(
-        (habit?.constraints?.find((c) => c.type === 'VALUE_FREQUENCY') as ValueFrequencyConstraint)
-            ?.targetValue?.value || ''
+        (
+            habit?.constraints?.find(
+                (c) => c.type === 'VALUE_FREQUENCY'
+            ) as ValueFrequencyConstraint
+        )?.targetValue?.value || ''
     );
 
     const [isSaving, setIsSaving] = useState(false);
@@ -289,7 +305,13 @@ function EditHabitModal({
                         <select
                             value={uiType}
                             onChange={(e) => {
-                                setUiType(e.target.value as 'CHECKBOX' | 'NUMBER_INPUT' | 'TIME_INPUT' | 'OPTION_SELECT');
+                                setUiType(
+                                    e.target.value as
+                                        | 'CHECKBOX'
+                                        | 'NUMBER_INPUT'
+                                        | 'TIME_INPUT'
+                                        | 'OPTION_SELECT'
+                                );
                                 // Reset target value when changing to checkbox or option select
                                 if (
                                     e.target.value === 'CHECKBOX' ||
@@ -354,7 +376,15 @@ function EditHabitModal({
                                 <select
                                     value={targetOperator}
                                     onChange={(e) =>
-                                        setTargetOperator(e.target.value as 'EQUALS' | 'NOT_EQUALS' | 'GREATER_THAN' | 'LESS_THAN' | 'BEFORE' | 'AFTER')
+                                        setTargetOperator(
+                                            e.target.value as
+                                                | 'EQUALS'
+                                                | 'NOT_EQUALS'
+                                                | 'GREATER_THAN'
+                                                | 'LESS_THAN'
+                                                | 'BEFORE'
+                                                | 'AFTER'
+                                        )
                                     }
                                     className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                                 >
@@ -573,7 +603,11 @@ function EditHabitModal({
                                     value={valueConstraintOperator}
                                     onChange={(e) =>
                                         setValueConstraintOperator(
-                                            e.target.value as 'EQUALS' | 'NOT_EQUALS' | 'GREATER_THAN' | 'LESS_THAN'
+                                            e.target.value as
+                                                | 'EQUALS'
+                                                | 'NOT_EQUALS'
+                                                | 'GREATER_THAN'
+                                                | 'LESS_THAN'
                                         )
                                     }
                                     className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
@@ -739,7 +773,8 @@ export default function EditHabitsPage() {
                             No Active Habits
                         </h3>
                         <p className="text-slate-400 mb-6">
-                            You don&apos;t have any active habits for this month yet.
+                            You don&apos;t have any active habits for this month
+                            yet.
                         </p>
                         <button
                             onClick={() => router.push('/add-habit')}
