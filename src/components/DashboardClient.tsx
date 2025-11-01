@@ -6,7 +6,7 @@ import { Edit3, Check } from 'lucide-react';
 import HabitLoggingDialog from '@/components/HabitLoggingDialog';
 import { MonthlyGoal, ConstraintRule } from '@/types';
 import { DashboardState } from '@/lib/dashboardFunctions';
-import { useHabits } from '@/hooks/useHabits';
+import { useHabitsSimplified } from '@/hooks/useHabitsSimplified';
 
 // Helper component to display constraint information
 const ConstraintInfo = ({ goal }: { goal: MonthlyGoal }) => {
@@ -102,7 +102,7 @@ type DashboardClientProps = {
 
 export default function DashboardClient({ dashboardState }: DashboardClientProps) {
     const router = useRouter();
-    const { logHabitEntry } = useHabits();
+    const { logHabitEntry } = useHabitsSimplified();
 
     const {
         currentUserProfile,

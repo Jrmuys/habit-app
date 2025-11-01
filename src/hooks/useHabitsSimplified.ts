@@ -4,8 +4,6 @@ import { useAuth } from '@/hooks/useAuth';
 import { addDoc, updateDoc, deleteDoc, doc, collection } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { HabitTemplate, MonthlyGoal, HabitEntry } from '@/types';
-import { logHabitEntryViaFunction } from '@/lib/dashboardFunctions';
-
 /**
  * Simplified useHabits hook - only provides write functions
  * Data fetching is now handled by server-side functions
@@ -75,14 +73,20 @@ export function useHabitsSimplified() {
     };
 
     /**
-     * Log a habit entry - now calls Firebase Function instead of direct Firestore write
+     * Log a habit entry - direct Firestore write
      */
     const logHabitEntry = async (entryData: Omit<HabitEntry, 'entryId' | 'userId' | 'timestamp'>) => {
         if (!user) throw new Error('User not authenticated');
 
+        const newEntry: Omit<HabitEntry, 'entryId'> = {
+            ...entryData,
+            userId: user.uid,
+            timestamp: new Date().toISOString(),
+        };
+
         try {
-            const result = await logHabitEntryViaFunction(entryData);
-            return result.entryId;
+            const docRef = await addDoc(collection(db, 'habitEntries'), newEntry);
+            return docRef.id;
         } catch (err) {
             throw new Error(err instanceof Error ? err.message : 'Failed to log habit entry');
         }
