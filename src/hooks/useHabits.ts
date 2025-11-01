@@ -6,8 +6,9 @@ import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc
 import { db } from '@/lib/firebase';
 import { HabitTemplate, MonthlyGoal, HabitEntry } from '@/types';
 
-export function useHabits() {
+export function useHabits(userIdOverride?: string) {
     const { user } = useAuth();
+    const userId = userIdOverride || user?.uid;
     const [habitTemplates, setHabitTemplates] = useState<HabitTemplate[]>([]);
     const [monthlyGoals, setMonthlyGoals] = useState<MonthlyGoal[]>([]);
     const [habitEntries, setHabitEntries] = useState<HabitEntry[]>([]);
@@ -15,7 +16,7 @@ export function useHabits() {
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
-        if (!user) {
+        if (!userId) {
             setHabitTemplates([]);
             setMonthlyGoals([]);
             setHabitEntries([]);
@@ -31,7 +32,7 @@ export function useHabits() {
             // Subscribe to user's habit templates
             const templatesQuery = query(
                 collection(db, 'habits'),
-                where('userId', '==', user.uid)
+                where('userId', '==', userId)
             );
 
             templatesUnsubscribe = onSnapshot(templatesQuery, (snapshot) => {
@@ -46,7 +47,7 @@ export function useHabits() {
             // Subscribe to user's monthly goals
             const goalsQuery = query(
                 collection(db, 'monthlyGoals'),
-                where('userId', '==', user.uid)
+                where('userId', '==', userId)
             );
 
             goalsUnsubscribe = onSnapshot(goalsQuery, (snapshot) => {
@@ -60,7 +61,7 @@ export function useHabits() {
             // Subscribe to user's habit entries
             const entriesQuery = query(
                 collection(db, 'habitEntries'),
-                where('userId', '==', user.uid)
+                where('userId', '==', userId)
             );
 
             entriesUnsubscribe = onSnapshot(entriesQuery, (snapshot) => {
@@ -81,8 +82,10 @@ export function useHabits() {
             goalsUnsubscribe?.();
             entriesUnsubscribe?.();
         };
-    }, [user?.uid]); // Only depend on user.uid, not the entire user object
+    }, [userId]); // Only depend on userId
 
+
+    // The following actions are only for the current user, not for partner
     const createHabitTemplate = async (templateData: Omit<HabitTemplate, 'habitId' | 'userId' | 'createdAt'>) => {
         if (!user) throw new Error('User not authenticated');
 

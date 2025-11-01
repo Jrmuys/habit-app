@@ -6,7 +6,11 @@ import { useHabits } from '@/hooks/useHabits';
 
 export default function PartnerPage() {
     const { partnerProfile } = useProfile();
-    const { habitTemplates, monthlyGoals, habitEntries } = useHabits();
+    const {
+        habitTemplates,
+        monthlyGoals,
+        habitEntries,
+    } = useHabits(partnerProfile?.uid);
 
     // Get current day of week (0 = Sunday, 1 = Monday, etc.)
     const today = new Date().getDay();
@@ -183,15 +187,13 @@ export default function PartnerPage() {
                                         className="flex justify-center"
                                     >
                                         <div
-                                            className={`w-6 h-6 rounded-full ${
-                                                completed
+                                            className={`w-6 h-6 rounded-full ${completed
                                                     ? 'bg-red-500'
                                                     : 'bg-slate-700'
-                                            } ${
-                                                dayIndex === today
+                                                } ${dayIndex === today
                                                     ? 'ring-2 ring-teal-500'
                                                     : ''
-                                            }`}
+                                                }`}
                                         />
                                     </div>
                                 ))}
@@ -221,11 +223,10 @@ export default function PartnerPage() {
                                     <div className="flex items-center gap-4">
                                         {/* Status Circle */}
                                         <div
-                                            className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                                                habit.completed
+                                            className={`w-12 h-12 rounded-full flex items-center justify-center ${habit.completed
                                                     ? 'bg-emerald-500'
                                                     : 'bg-slate-700'
-                                            }`}
+                                                }`}
                                         >
                                             {habit.completed && (
                                                 <svg
@@ -281,11 +282,10 @@ export default function PartnerPage() {
                                     <div className="flex items-center gap-4">
                                         {/* Status Circle */}
                                         <div
-                                            className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                                                habit.status === 'complete'
+                                            className={`w-12 h-12 rounded-full flex items-center justify-center ${habit.status === 'complete'
                                                     ? 'bg-emerald-500'
                                                     : 'bg-slate-700'
-                                            }`}
+                                                }`}
                                         >
                                             {habit.status === 'complete' && (
                                                 <svg

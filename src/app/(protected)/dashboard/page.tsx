@@ -98,8 +98,17 @@ const ConstraintInfo = ({ goal }: { goal: MonthlyGoal }) => {
 
 export default function DashboardPage() {
     const { currentUserProfile, partnerProfile, isSingleUser } = useProfile();
-    const { habitTemplates, monthlyGoals, habitEntries, logHabitEntry } =
-        useHabits();
+    const {
+        habitTemplates: userHabitTemplates,
+        monthlyGoals: userMonthlyGoals,
+        habitEntries: userHabitEntries,
+        logHabitEntry,
+    } = useHabits();
+    const {
+        habitTemplates: partnerHabitTemplates,
+        monthlyGoals: partnerMonthlyGoals,
+        habitEntries: partnerHabitEntries,
+    } = useHabits(partnerProfile?.uid);
     const router = useRouter();
 
     // Dialog state
@@ -142,17 +151,17 @@ export default function DashboardPage() {
         const today = new Date().toISOString().slice(0, 10);
         const currentMonth = new Date().toISOString().slice(0, 7);
 
-        const userGoals = monthlyGoals.filter(
+        const userGoals = userMonthlyGoals.filter(
             (goal) =>
                 goal.userId === currentUserProfile.uid &&
                 goal.month === currentMonth
         );
 
         return userGoals.map((goal) => {
-            const template = habitTemplates.find(
+            const template = userHabitTemplates.find(
                 (t) => t.habitId === goal.habitId
             );
-            const entry = habitEntries.find(
+            const entry = userHabitEntries.find(
                 (e) =>
                     e.monthlyGoalId === goal.monthlyGoalId &&
                     e.targetDate === today
@@ -165,14 +174,24 @@ export default function DashboardPage() {
                 today,
             };
         });
-    }, [currentUserProfile, monthlyGoals, habitTemplates, habitEntries]);
+    }, [currentUserProfile, userMonthlyGoals, userHabitTemplates, userHabitEntries]);
 
     // Process data to create weekly view
     const weeklyData = useMemo(() => {
         if (!currentUserProfile) return [];
-        const usersToShow = [currentUserProfile];
+        const usersToShow = [
+            {
+                profile: currentUserProfile,
+                goals: userMonthlyGoals,
+                entries: userHabitEntries,
+            },
+        ];
         if (partnerProfile) {
-            usersToShow.push(partnerProfile);
+            usersToShow.push({
+                profile: partnerProfile,
+                goals: partnerMonthlyGoals,
+                entries: partnerHabitEntries,
+            });
         }
 
         const currentMonth = new Date().toISOString().slice(0, 7); // YYYY-MM format
@@ -186,13 +205,8 @@ export default function DashboardPage() {
             return date.toISOString().slice(0, 10);
         });
 
-        const users = usersToShow.map((profile) => ({
-            profile,
-            initial: profile.name.charAt(0).toUpperCase(),
-        }));
-
-        return users.map((user, userIndex) => {
-            const userGoals = monthlyGoals.filter(
+        return usersToShow.map((user, userIndex) => {
+            const userGoals = user.goals.filter(
                 (goal) =>
                     goal.userId === user.profile.uid &&
                     goal.month === currentMonth
@@ -200,16 +214,10 @@ export default function DashboardPage() {
 
             const days = weekDays.map((date) => {
                 // Check if user has any completed habits for this date
-                const dayEntries = habitEntries.filter(
+                const dayEntries = user.entries.filter(
                     (entry) =>
                         entry.userId === user.profile.uid &&
                         entry.targetDate === date
-                );
-
-                const dayGoals = userGoals.filter((goal) =>
-                    dayEntries.some(
-                        (entry) => entry.monthlyGoalId === goal.monthlyGoalId
-                    )
                 );
 
                 // Simple completion check - if they have any entries for the day
@@ -217,12 +225,12 @@ export default function DashboardPage() {
             });
 
             return {
-                user: user.initial,
+                user: user.profile.name.charAt(0).toUpperCase(),
                 days,
                 userIndex,
             };
         });
-    }, [currentUserProfile, partnerProfile, monthlyGoals, habitEntries]);
+    }, [currentUserProfile, partnerProfile, userMonthlyGoals, userHabitEntries, partnerMonthlyGoals, partnerHabitEntries]);
 
     // Get today's day index in the current week (0 = Sunday, 6 = Saturday)
     const todayIndex = new Date().getDay();
@@ -236,17 +244,17 @@ export default function DashboardPage() {
         const yesterdayDate = yesterday.toISOString().slice(0, 10);
         const currentMonth = new Date().toISOString().slice(0, 7);
 
-        const userGoals = monthlyGoals.filter(
+        const userGoals = userMonthlyGoals.filter(
             (goal) =>
                 goal.userId === currentUserProfile.uid &&
                 goal.month === currentMonth
         );
 
         return userGoals.map((goal) => {
-            const template = habitTemplates.find(
+            const template = userHabitTemplates.find(
                 (t) => t.habitId === goal.habitId
             );
-            const entries = habitEntries.filter(
+            const entries = userHabitEntries.filter(
                 (entry) =>
                     entry.monthlyGoalId === goal.monthlyGoalId &&
                     entry.targetDate === yesterdayDate
@@ -262,7 +270,7 @@ export default function DashboardPage() {
                 yesterdayDate, // Pass the date for completion
             };
         });
-    }, [currentUserProfile, monthlyGoals, habitTemplates, habitEntries]);
+    }, [currentUserProfile, userMonthlyGoals, userHabitTemplates, userHabitEntries]);
 
     const userName = currentUserProfile?.name || 'User';
     const userPoints = currentUserProfile?.points || 0;
@@ -336,18 +344,16 @@ export default function DashboardPage() {
                                                 className="flex justify-center"
                                             >
                                                 <div
-                                                    className={`w-6 h-6 rounded-full ${
-                                                        completed
+                                                    className={`w-6 h-6 rounded-full ${completed
                                                             ? userData.userIndex ===
-                                                              0
+                                                                0
                                                                 ? 'bg-emerald-500'
                                                                 : 'bg-red-500'
                                                             : 'bg-slate-700'
-                                                    } ${
-                                                        dayIndex === todayIndex
+                                                        } ${dayIndex === todayIndex
                                                             ? 'ring-2 ring-purple-500'
                                                             : ''
-                                                    }`}
+                                                        }`}
                                                 />
                                             </div>
                                         )
@@ -375,11 +381,10 @@ export default function DashboardPage() {
                             }) => (
                                 <div
                                     key={goal.monthlyGoalId}
-                                    className={`bg-slate-800 p-4 rounded-lg shadow-lg flex items-center justify-between ${
-                                        canCompleteToday
+                                    className={`bg-slate-800 p-4 rounded-lg shadow-lg flex items-center justify-between ${canCompleteToday
                                             ? 'cursor-pointer transition-colors hover:bg-slate-700'
                                             : ''
-                                    }`}
+                                        }`}
                                     onClick={() =>
                                         canCompleteToday &&
                                         handleHabitClick(
@@ -405,25 +410,24 @@ export default function DashboardPage() {
                                             <p className="text-sm text-slate-400">
                                                 {isCompleted
                                                     ? `Completed: ${entries
-                                                          .map(
-                                                              (e: HabitEntry) =>
-                                                                  e.value
-                                                          )
-                                                          .join(', ')}`
+                                                        .map(
+                                                            (e: HabitEntry) =>
+                                                                e.value
+                                                        )
+                                                        .join(', ')}`
                                                     : canCompleteToday
-                                                    ? 'Not completed - click to log'
-                                                    : 'Not completed'}
+                                                        ? 'Not completed - click to log'
+                                                        : 'Not completed'}
                                             </p>
                                         </div>
                                     </div>
                                     <div
-                                        className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                            isCompleted
+                                        className={`w-10 h-10 rounded-full flex items-center justify-center ${isCompleted
                                                 ? 'bg-emerald-500'
                                                 : canCompleteToday
-                                                ? 'bg-orange-600'
-                                                : 'bg-slate-700'
-                                        }`}
+                                                    ? 'bg-orange-600'
+                                                    : 'bg-slate-700'
+                                            }`}
                                     >
                                         {isCompleted && (
                                             <span className="text-white font-bold">
@@ -467,11 +471,10 @@ export default function DashboardPage() {
                                     <div className="flex items-center gap-4">
                                         {/* Status Circle */}
                                         <div
-                                            className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                                                entry
+                                            className={`w-12 h-12 rounded-full flex items-center justify-center ${entry
                                                     ? 'bg-emerald-500'
                                                     : 'bg-slate-700'
-                                            }`}
+                                                }`}
                                         >
                                             {entry && (
                                                 <Check className="h-6 w-6 text-white" />
