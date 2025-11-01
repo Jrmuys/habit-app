@@ -172,7 +172,7 @@ export async function getDashboardState(
             entries,
             isCompleted: entries.length > 0,
             canCompleteToday:
-                (goal.logging.allowNextDayCompletion || false) && entries.length === 0,
+                !!goal.logging.allowNextDayCompletion && entries.length === 0,
             yesterdayDate,
         };
     });

@@ -1,29 +1,27 @@
+import { MonthlyGoal, HabitTemplate, HabitEntry } from '@/types';
+
+export type UserProfile = {
+    uid: string;
+    email: string;
+    name: string;
+    points: number;
+    partnerId?: string;
+};
+
 export type DashboardState = {
-    currentUserProfile: {
-        uid: string;
-        email: string;
-        name: string;
-        points: number;
-        partnerId?: string;
-    };
-    partnerProfile: {
-        uid: string;
-        email: string;
-        name: string;
-        points: number;
-        partnerId?: string;
-    } | null;
+    currentUserProfile: UserProfile;
+    partnerProfile: UserProfile | null;
     isSingleUser: boolean;
     todaysHabits: Array<{
-        goal: any;
-        template: any;
-        entry: any;
+        goal: MonthlyGoal;
+        template: HabitTemplate | undefined;
+        entry: HabitEntry | undefined;
         today: string;
     }>;
     yesterdayHabits: Array<{
-        goal: any;
-        template: any;
-        entries: any[];
+        goal: MonthlyGoal;
+        template: HabitTemplate | undefined;
+        entries: HabitEntry[];
         isCompleted: boolean;
         canCompleteToday: boolean;
         yesterdayDate: string;
@@ -54,16 +52,5 @@ export async function getDashboardStateFromFunction(userId: string): Promise<Das
     return response.json();
 }
 
-/**
- * Calls the direct Firestore to log a habit entry
- * (Can be replaced with API route if needed)
- */
-export async function logHabitEntryViaFunction(entryData: {
-    monthlyGoalId: string;
-    targetDate: string;
-    value: string | number | boolean;
-}): Promise<{ entryId: string; success: boolean }> {
-    // For now, this will still use direct Firestore write
-    // This can be refactored to use an API route if needed
-    throw new Error('Use the direct logHabitEntry from useHabits hook');
-}
+// Note: Habit entry logging is handled directly in useHabitsSimplified hook
+// using direct Firestore writes. An API route can be added here if needed in the future.
