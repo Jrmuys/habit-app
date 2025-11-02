@@ -70,8 +70,8 @@ export async function createHabit(
                 },
                 logging: habitData.monthlyGoalConfig?.logging || {
                     window: {
-                        startOffsetHours: -6,
-                        endOffsetHours: 6,
+                        startOffsetHours: 0,
+                        endOffsetHours: 24,
                     },
                 },
                 constraints: habitData.monthlyGoalConfig?.constraints || [],

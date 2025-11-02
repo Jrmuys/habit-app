@@ -50,8 +50,10 @@ export function useHabitsSimplified() {
         }
     };
 
-    // Update and delete operations still use direct Firestore writes
-    // These could be moved to callable functions in a future iteration
+    // Update and delete operations still use direct Firestore writes for minimal changes
+    // This is intentional - create operations need server-side validation and point logic,
+    // while updates/deletes are simpler operations that can safely use direct writes
+    // These could be moved to callable functions in a future iteration for full consistency
     const updateHabitTemplate = async (habitId: string, updates: Partial<HabitTemplate>) => {
         if (!user) throw new Error('User not authenticated');
         

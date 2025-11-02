@@ -1,5 +1,6 @@
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { app } from './firebase';
+import { UIRule, GoalRule, LoggingRule, ConstraintRule } from '@/types';
 
 // Initialize Firebase Functions
 const functions = getFunctions(app);
@@ -14,10 +15,10 @@ export type CreateHabitParams = {
     createMonthlyGoal?: boolean;
     monthlyGoalConfig?: {
         month?: string;
-        ui?: any;
-        goal?: any;
-        logging?: any;
-        constraints?: any[];
+        ui?: UIRule;
+        goal?: GoalRule;
+        logging?: LoggingRule;
+        constraints?: ConstraintRule[];
     };
 };
 
@@ -29,10 +30,10 @@ export type CreateHabitResponse = {
 export type CreateMonthlyGoalParams = {
     habitId: string;
     month: string;
-    ui: any;
-    goal: any;
-    logging: any;
-    constraints?: any[];
+    ui: UIRule;
+    goal: GoalRule;
+    logging: LoggingRule;
+    constraints?: ConstraintRule[];
 };
 
 export type CreateMonthlyGoalResponse = {
