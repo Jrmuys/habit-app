@@ -30,7 +30,7 @@ export function useDashboardState() {
                 setDashboardState(state);
                 setError(null);
             } catch (err) {
-                if (err.name === 'AbortError') {
+                if ((err as Error).name === 'AbortError') {
                     // Request was aborted, do not update state
                     return;
                 }
