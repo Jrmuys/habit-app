@@ -9,6 +9,7 @@ export type Reward = {
 export type Milestone = {
     milestoneId: string;
     userId: string;
+    habitId?: string; // Optional: links milestone to a specific habit
     name: string;
     description?: string;
     pointValue: number; // Fixed point value (e.g., 150, 500, 1500)

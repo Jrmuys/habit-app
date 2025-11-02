@@ -21,6 +21,8 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
     const [frequency, setFrequency] = useState<'DAILY' | 'CUSTOM'>('DAILY');
     const [basePoints, setBasePoints] = useState(100);
     const [partialPoints, setPartialPoints] = useState(25);
+    // Note: streakShield is always enabled automatically at 7-day streaks
+    // This UI toggle is just for preview/information purposes
     const [streakShield, setStreakShield] = useState(true);
     const [allowShowUp, setAllowShowUp] = useState(false);
     const [showUpPoints, setShowUpPoints] = useState(1);
@@ -102,6 +104,7 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                 userId: userProfile.uid,
                 habitId: habitRef.id,
                 month: currentMonth,
+                // TODO: Allow UI type configuration in future version
                 ui: { type: 'CHECKBOX' },
                 goal: {
                     period: frequency,
@@ -152,7 +155,7 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
         return {
             base: Math.round(basePoints * multiplier),
             partial: Math.round(partialPoints * multiplier),
-            showUp: showUpPoints,
+            showUp: showUpPoints, // Show up points are never multiplied
             multiplier
         };
     };
@@ -518,7 +521,7 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                             <div className="space-y-1 text-sm text-slate-300">
                                 <div>Full completion: {preview7Days.base} pts</div>
                                 <div>Partial completion: {preview7Days.partial} pts</div>
-                                {allowShowUp && <div>Show up: {preview7Days.showUp} pts</div>}
+                                {allowShowUp && <div>Show up: {preview7Days.showUp} pts (no multiplier)</div>}
                             </div>
                         </div>
 
@@ -529,7 +532,7 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                             <div className="space-y-1 text-sm text-slate-300">
                                 <div>Full completion: {preview14Days.base} pts</div>
                                 <div>Partial completion: {preview14Days.partial} pts</div>
-                                {allowShowUp && <div>Show up: {preview14Days.showUp} pts</div>}
+                                {allowShowUp && <div>Show up: {preview14Days.showUp} pts (no multiplier)</div>}
                             </div>
                         </div>
                     </div>
