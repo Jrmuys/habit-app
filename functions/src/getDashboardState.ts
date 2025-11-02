@@ -5,7 +5,9 @@ import {
     HabitEntry,
     UserProfile,
     DashboardState,
+    Milestone,
 } from './types';
+import { calculateStreak, getRecentHistory } from './streakCalculations';
 
 /**
  * Fetches the dashboard state for a user
@@ -50,6 +52,7 @@ export async function getDashboardState(
         userHabitTemplatesSnap,
         userMonthlyGoalsSnap,
         userHabitEntriesSnap,
+        userMilestonesSnap,
         partnerHabitTemplatesSnap,
         partnerMonthlyGoalsSnap,
         partnerHabitEntriesSnap,
@@ -57,6 +60,7 @@ export async function getDashboardState(
         db.collection('habits').where('userId', '==', userId).get(),
         db.collection('monthlyGoals').where('userId', '==', userId).get(),
         db.collection('habitEntries').where('userId', '==', userId).get(),
+        db.collection('milestones').where('userId', '==', userId).get(),
         partnerProfile
             ? db
                   .collection('habits')
@@ -127,6 +131,14 @@ export async function getDashboardState(
             } as HabitEntry)
     );
 
+    const milestones = userMilestonesSnap.docs.map(
+        (doc) =>
+            ({
+                milestoneId: doc.id,
+                ...doc.data(),
+            } as Milestone)
+    );
+
     // Calculate today's habits
     const today = new Date().toISOString().slice(0, 10);
     const currentMonth = new Date().toISOString().slice(0, 7);
@@ -142,12 +154,22 @@ export async function getDashboardState(
         const entry = userHabitEntries.find(
             (e) => e.monthlyGoalId === goal.monthlyGoalId && e.targetDate === today
         );
+        
+        // Get all entries for this goal to calculate streak
+        const goalEntries = userHabitEntries.filter(
+            (e) => e.monthlyGoalId === goal.monthlyGoalId
+        );
+        
+        const streak = calculateStreak(goalEntries, template, today);
+        const recentHistory = getRecentHistory(goalEntries, today);
 
         return {
             goal,
             template,
             entry,
             today,
+            streak,
+            recentHistory,
         };
     });
 
@@ -165,6 +187,13 @@ export async function getDashboardState(
                 entry.monthlyGoalId === goal.monthlyGoalId &&
                 entry.targetDate === yesterdayDate
         );
+        
+        // Get all entries for this goal to calculate streak
+        const goalEntries = userHabitEntries.filter(
+            (e) => e.monthlyGoalId === goal.monthlyGoalId
+        );
+        
+        const streak = calculateStreak(goalEntries, template, today);
 
         return {
             goal,
@@ -174,6 +203,7 @@ export async function getDashboardState(
             canCompleteToday:
                 !!goal.logging.allowNextDayCompletion && entries.length === 0,
             yesterdayDate,
+            streak,
         };
     });
 
@@ -224,5 +254,6 @@ export async function getDashboardState(
         todaysHabits,
         yesterdayHabits,
         weeklyData,
+        milestones,
     };
 }

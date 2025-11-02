@@ -89,6 +89,26 @@ export type UserProfile = {
     partnerId?: string;
 };
 
+export type StreakInfo = {
+    currentStreak: number;
+    multiplier: number;
+    hasShield: boolean;
+    shieldActive: boolean;
+    lastCompletedDate: string | null;
+};
+
+export type Milestone = {
+    milestoneId: string;
+    userId: string;
+    habitId?: string;
+    name: string;
+    description?: string;
+    pointValue: number;
+    isCompleted: boolean;
+    completedAt?: string;
+    createdAt: string;
+};
+
 export type DashboardState = {
     currentUserProfile: UserProfile;
     partnerProfile: UserProfile | null;
@@ -98,6 +118,8 @@ export type DashboardState = {
         template: HabitTemplate | undefined;
         entry: HabitEntry | undefined;
         today: string;
+        streak: StreakInfo;
+        recentHistory: boolean[];
     }>;
     yesterdayHabits: Array<{
         goal: MonthlyGoal;
@@ -106,10 +128,12 @@ export type DashboardState = {
         isCompleted: boolean;
         canCompleteToday: boolean;
         yesterdayDate: string;
+        streak: StreakInfo;
     }>;
     weeklyData: Array<{
         user: string;
         days: boolean[];
         userIndex: number;
     }>;
+    milestones: Milestone[];
 };
