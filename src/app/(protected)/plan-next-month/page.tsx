@@ -16,8 +16,6 @@ import {
     Hash,
     BarChart3,
 } from 'lucide-react';
-import { collection, addDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 
 type PlanAction = 'continue' | 'modify' | 'drop';
 type HabitPlan = {
@@ -439,14 +437,16 @@ export default function PlanNextMonthPage() {
                 (plan) => plan.action !== 'drop'
             );
 
+            // Use Firebase Callable Function to create monthly goals
+            const { createMonthlyGoal } = await import('@/lib/firebaseFunctions');
+            
             for (const plan of continuedPlans) {
                 const originalHabit = currentMonthHabits.find(
                     (h) => h.habitId === plan.habitId
                 );
                 if (!originalHabit) continue;
 
-                await addDoc(collection(db, 'monthlyGoals'), {
-                    userId: currentUserProfile.uid,
+                await createMonthlyGoal({
                     habitId: plan.habitId,
                     month: nextMonthStr,
                     ui: originalHabit.ui,
@@ -458,8 +458,7 @@ export default function PlanNextMonthPage() {
 
             // Create monthly goals for new habits
             for (const newHabit of newHabits) {
-                await addDoc(collection(db, 'monthlyGoals'), {
-                    userId: currentUserProfile.uid,
+                await createMonthlyGoal({
                     habitId: newHabit.habitId,
                     month: nextMonthStr,
                     ui: { type: 'CHECKBOX' },

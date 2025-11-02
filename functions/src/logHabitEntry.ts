@@ -16,6 +16,11 @@ export async function logHabitEntry(
         timestamp: new Date().toISOString(),
     };
 
-    const docRef = await db.collection('habitEntries').add(newEntry);
+    // Write to subcollection under users/{userId}/habitEntries
+    const docRef = await db
+        .collection('users')
+        .doc(userId)
+        .collection('habitEntries')
+        .add(newEntry);
     return docRef.id;
 }
