@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { db } from '@/lib/firebase-admin'; // Use the admin SDK
 import {
     HabitTemplate,
     MonthlyGoal,
@@ -52,8 +51,8 @@ export async function POST(request: NextRequest) {
         }
 
         // Fetch current user profile
-        const userProfileDoc = await getDoc(doc(db, 'users', userId));
-        if (!userProfileDoc.exists()) {
+        const userProfileDoc = await db.collection('users').doc(userId).get();
+        if (!userProfileDoc.exists) {
             return NextResponse.json(
                 { error: 'User profile not found' },
                 { status: 404 }
@@ -70,8 +69,8 @@ export async function POST(request: NextRequest) {
         let isSingleUser = false;
 
         if (currentUserProfile.partnerId) {
-            const partnerDoc = await getDoc(doc(db, 'users', currentUserProfile.partnerId));
-            if (partnerDoc.exists()) {
+            const partnerDoc = await db.collection('users').doc(currentUserProfile.partnerId).get();
+            if (partnerDoc.exists) {
                 partnerProfile = {
                     uid: partnerDoc.id,
                     ...partnerDoc.data(),
@@ -87,33 +86,33 @@ export async function POST(request: NextRequest) {
             userMonthlyGoalsSnap,
             userHabitEntriesSnap,
         ] = await Promise.all([
-            getDocs(query(collection(db, 'habits'), where('userId', '==', userId))),
-            getDocs(query(collection(db, 'monthlyGoals'), where('userId', '==', userId))),
-            getDocs(query(collection(db, 'habitEntries'), where('userId', '==', userId))),
+            db.collection('habits').where('userId', '==', userId).get(),
+            db.collection('monthlyGoals').where('userId', '==', userId).get(),
+            db.collection('habitEntries').where('userId', '==', userId).get(),
         ]);
 
         const userHabitTemplates = userHabitTemplatesSnap.docs.map(
             (doc) =>
-                ({
-                    habitId: doc.id,
-                    ...doc.data(),
-                } as HabitTemplate)
+            ({
+                habitId: doc.id,
+                ...doc.data(),
+            } as HabitTemplate)
         );
 
         const userMonthlyGoals = userMonthlyGoalsSnap.docs.map(
             (doc) =>
-                ({
-                    monthlyGoalId: doc.id,
-                    ...doc.data(),
-                } as MonthlyGoal)
+            ({
+                monthlyGoalId: doc.id,
+                ...doc.data(),
+            } as MonthlyGoal)
         );
 
         const userHabitEntries = userHabitEntriesSnap.docs.map(
             (doc) =>
-                ({
-                    entryId: doc.id,
-                    ...doc.data(),
-                } as HabitEntry)
+            ({
+                entryId: doc.id,
+                ...doc.data(),
+            } as HabitEntry)
         );
 
         // Fetch partner data if exists
@@ -125,24 +124,24 @@ export async function POST(request: NextRequest) {
                 partnerMonthlyGoalsSnap,
                 partnerHabitEntriesSnap,
             ] = await Promise.all([
-                getDocs(query(collection(db, 'monthlyGoals'), where('userId', '==', partnerProfile.uid))),
-                getDocs(query(collection(db, 'habitEntries'), where('userId', '==', partnerProfile.uid))),
+                db.collection('monthlyGoals').where('userId', '==', partnerProfile.uid).get(),
+                db.collection('habitEntries').where('userId', '==', partnerProfile.uid).get(),
             ]);
 
             partnerMonthlyGoals = partnerMonthlyGoalsSnap.docs.map(
                 (doc) =>
-                    ({
-                        monthlyGoalId: doc.id,
-                        ...doc.data(),
-                    } as MonthlyGoal)
+                ({
+                    monthlyGoalId: doc.id,
+                    ...doc.data(),
+                } as MonthlyGoal)
             );
 
             partnerHabitEntries = partnerHabitEntriesSnap.docs.map(
                 (doc) =>
-                    ({
-                        entryId: doc.id,
-                        ...doc.data(),
-                    } as HabitEntry)
+                ({
+                    entryId: doc.id,
+                    ...doc.data(),
+                } as HabitEntry)
             );
         }
 
@@ -246,10 +245,10 @@ export async function POST(request: NextRequest) {
         };
 
         return NextResponse.json(dashboardState);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error fetching dashboard state:', error);
         return NextResponse.json(
-            { error: 'Failed to fetch dashboard state' },
+            { error: error.message || 'Failed to fetch dashboard state' },
             { status: 500 }
         );
     }

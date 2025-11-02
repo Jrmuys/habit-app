@@ -26,10 +26,11 @@ export function useDashboardState() {
         const fetchDashboardState = async () => {
             try {
                 setLoading(true);
-                const state = await getDashboardStateFromFunction(user.uid, controller.signal);
+                const idToken = await user.getIdToken();
+                const state = await getDashboardStateFromFunction(user.uid, idToken);
                 setDashboardState(state);
                 setError(null);
-            } catch (err) {
+            } catch (err: any) {
                 if (err.name === 'AbortError') {
                     // Request was aborted, do not update state
                     return;
