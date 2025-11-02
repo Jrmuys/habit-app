@@ -90,6 +90,7 @@ export type LogHabitEntryParams = {
 
 export type LogHabitEntryResponse = {
     entryId: string;
+    pointsAwarded: number;
     success: boolean;
 };
 

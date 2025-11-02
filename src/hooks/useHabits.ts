@@ -6,6 +6,18 @@ import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc
 import { db } from '@/lib/firebase';
 import { HabitTemplate, MonthlyGoal, HabitEntry } from '@/types';
 
+/**
+ * LEGACY HOOK - Uses direct Firestore writes
+ * 
+ * This hook is still used by non-refactored pages:
+ * - add-habit, plan-next-month, edit-habits, partner, history
+ * 
+ * TODO: Refactor these pages to use:
+ * - useHabitsSimplified for write operations (uses Firebase Functions)
+ * - API routes or Firebase Functions for read operations (server-side calculations)
+ * 
+ * See ARCHITECTURE.md for refactoring guidelines.
+ */
 export function useHabits(userIdOverride?: string) {
     const { user } = useAuth();
     const userId = userIdOverride || user?.uid;
