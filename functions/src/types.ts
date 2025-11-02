@@ -6,6 +6,11 @@ export type HabitTemplate = {
     name: string;
     description?: string;
     icon?: string;
+    allowShowUp?: boolean; // "Just Show Up" feature
+    showUpPoints?: number; // Points for "show up" days (default 1)
+    basePoints?: number; // Points for full completion (default 100)
+    partialPoints?: number; // Points for partial completion (default 25)
+    milestones?: HabitMilestone[]; // Milestones associated with this habit
     createdAt: string;
 };
 
@@ -26,7 +31,7 @@ export type HabitEntry = {
     userId: string;
     timestamp: string;
     targetDate: string;
-    value: string | number | boolean;
+    value: string | number | boolean | 'showUp'; // Added 'showUp' for "just show up" entries
 };
 
 export type UIRule = {
@@ -70,12 +75,38 @@ export type ValueFrequencyConstraint = BaseConstraint & {
 
 export type ConstraintRule = GraceDaysConstraint | ValueFrequencyConstraint;
 
+// Habit-specific milestone (part of habit configuration)
+export type HabitMilestone = {
+    name: string;
+    pointValue: number;
+};
+
 export type UserProfile = {
     uid: string;
     email: string;
     name: string;
     points: number;
     partnerId?: string;
+};
+
+export type StreakInfo = {
+    currentStreak: number;
+    multiplier: number;
+    hasShield: boolean;
+    shieldActive: boolean;
+    lastCompletedDate: string | null;
+};
+
+export type Milestone = {
+    milestoneId: string;
+    userId: string;
+    habitId?: string;
+    name: string;
+    description?: string;
+    pointValue: number;
+    isCompleted: boolean;
+    completedAt?: string;
+    createdAt: string;
 };
 
 export type DashboardState = {
@@ -87,6 +118,8 @@ export type DashboardState = {
         template: HabitTemplate | undefined;
         entry: HabitEntry | undefined;
         today: string;
+        streak: StreakInfo;
+        recentHistory: boolean[];
     }>;
     yesterdayHabits: Array<{
         goal: MonthlyGoal;
@@ -95,10 +128,12 @@ export type DashboardState = {
         isCompleted: boolean;
         canCompleteToday: boolean;
         yesterdayDate: string;
+        streak: StreakInfo;
     }>;
     weeklyData: Array<{
         user: string;
         days: boolean[];
         userIndex: number;
     }>;
+    milestones: Milestone[];
 };
