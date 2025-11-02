@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/hooks/useAuth';
 import { useEffect, useState } from 'react';
-import { collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, runTransaction } from 'firebase/firestore';
+import { collection, query, onSnapshot, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { Reward } from '@/types/misc';
 
@@ -26,10 +26,9 @@ export function useRewards() {
         let rewardsUnsubscribe: (() => void) | undefined;
 
         try {
-            // Subscribe to user's rewards
+            // Subscribe to user's rewards from subcollection
             const rewardsQuery = query(
-                collection(db, 'rewards'),
-                where('userId', '==', user.uid)
+                collection(db, 'users', user.uid, 'rewards')
             );
 
             rewardsUnsubscribe = onSnapshot(rewardsQuery, (snapshot) => {
@@ -58,23 +57,25 @@ export function useRewards() {
     const createReward = async (rewardData: Omit<Reward, 'rewardId' | 'userId' | 'createdAt'>) => {
         if (!user) throw new Error('User not authenticated');
 
-        const newReward: Omit<Reward, 'rewardId'> = {
-            ...rewardData,
-            userId: user.uid,
-            createdAt: new Date().toISOString(),
-        };
-
         try {
-            const docRef = await addDoc(collection(db, 'rewards'), newReward);
-            return docRef.id;
+            // Use Firebase Callable Function to create reward
+            const { createReward: createRewardFunc } = await import('@/lib/firebaseFunctions');
+            const result = await createRewardFunc({
+                name: rewardData.name,
+                description: rewardData.description,
+                cost: rewardData.cost,
+            });
+            return result.data.rewardId;
         } catch (err) {
             throw new Error(err instanceof Error ? err.message : 'Failed to create reward');
         }
     };
 
     const updateReward = async (rewardId: string, updates: Partial<Reward>) => {
+        if (!user) throw new Error('User not authenticated');
+        
         try {
-            const rewardRef = doc(db, 'rewards', rewardId);
+            const rewardRef = doc(db, 'users', user.uid, 'rewards', rewardId);
             await updateDoc(rewardRef, updates);
         } catch (err) {
             throw new Error(err instanceof Error ? err.message : 'Failed to update reward');
@@ -82,8 +83,10 @@ export function useRewards() {
     };
 
     const deleteReward = async (rewardId: string) => {
+        if (!user) throw new Error('User not authenticated');
+        
         try {
-            const rewardRef = doc(db, 'rewards', rewardId);
+            const rewardRef = doc(db, 'users', user.uid, 'rewards', rewardId);
             await deleteDoc(rewardRef);
         } catch (err) {
             throw new Error(err instanceof Error ? err.message : 'Failed to delete reward');
@@ -94,48 +97,9 @@ export function useRewards() {
         if (!user) throw new Error('User not authenticated');
 
         try {
-            await runTransaction(db, async (transaction) => {
-                // Get the reward details
-                const rewardRef = doc(db, 'rewards', rewardId);
-                const rewardDoc = await transaction.get(rewardRef);
-
-                if (!rewardDoc.exists()) {
-                    throw new Error('Reward not found');
-                }
-
-                const reward = { rewardId: rewardDoc.id, ...rewardDoc.data() } as Reward;
-
-                // Get the user's profile
-                const userRef = doc(db, 'users', user.uid);
-                const userDoc = await transaction.get(userRef);
-
-                if (!userDoc.exists()) {
-                    throw new Error('User profile not found');
-                }
-
-                const userProfile = userDoc.data();
-                const currentPoints = userProfile.points || 0;
-
-                // Check if user has enough points
-                if (currentPoints < reward.cost) {
-                    throw new Error('Insufficient points');
-                }
-
-                // Deduct points from user's profile
-                transaction.update(userRef, {
-                    points: currentPoints - reward.cost
-                });
-
-                // Create activity log entry
-                const activityLogRef = collection(db, 'activityLog');
-                transaction.set(doc(activityLogRef), {
-                    coupleId: userProfile.coupleId || '',
-                    authorId: user.uid,
-                    timestamp: new Date().toISOString(),
-                    text: `Redeemed "${reward.name}" for ${reward.cost} points`
-                });
-            });
-
+            // Use Firebase Callable Function to redeem reward
+            const { redeemReward } = await import('@/lib/firebaseFunctions');
+            await redeemReward({ rewardId });
             console.log(`Successfully redeemed reward: ${rewardId}`);
         } catch (err) {
             throw new Error(err instanceof Error ? err.message : 'Failed to redeem reward');

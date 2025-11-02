@@ -3,12 +3,9 @@
 import { useState } from 'react';
 import { Plus, X, Shield, TrendingUp, Info } from 'lucide-react';
 import {
-    HabitTemplate,
     ConstraintRule,
     ValueFrequencyConstraint,
 } from '@/types';
-import { collection, addDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { useProfile } from '@/hooks/useProfile';
 
 type HabitCreateFormProps = {
@@ -70,43 +67,32 @@ export default function HabitCreateForm({
 
         setIsSaving(true);
         try {
-            // Create habit template
-            const habitTemplate: Omit<HabitTemplate, 'habitId'> = {
-                userId: userProfile.uid,
+            // Use Firebase Callable Function to create habit and monthly goal
+            // Note: Import firebaseFunctions at the top of the file
+            const { createHabit } = await import('@/lib/firebaseFunctions');
+            
+            await createHabit({
                 name: name.trim(),
                 description: description.trim() || undefined,
-                allowPartial,
-                basePoints,
-                createdAt: new Date().toISOString(),
-            };
-
-            const habitRef = await addDoc(
-                collection(db, 'habits'),
-                habitTemplate
-            );
-
-            // Create monthly goal for current month
-            const currentMonth = new Date().toISOString().slice(0, 7);
-            const monthlyGoal = {
-                userId: userProfile.uid,
-                habitId: habitRef.id,
-                month: currentMonth,
-                // TODO: Allow UI type configuration in future version
-                ui: { type: 'CHECKBOX' },
-                goal: {
-                    period: frequency,
-                    frequency: frequency === 'DAILY' ? 1 : 5, // Default to 5 times for custom
-                },
-                logging: {
-                    window: {
-                        startOffsetHours: 0,
-                        endOffsetHours: 24,
+                allowShowUp: allowPartial,
+                // basePoints and partialPoints are now hardcoded in the function (100 and 25)
+                createMonthlyGoal: true,
+                monthlyGoalConfig: {
+                    month: new Date().toISOString().slice(0, 7),
+                    ui: { type: 'CHECKBOX' },
+                    goal: {
+                        period: frequency,
+                        frequency: frequency === 'DAILY' ? 1 : 5,
                     },
+                    logging: {
+                        window: {
+                            startOffsetHours: 0,
+                            endOffsetHours: 24,
+                        },
+                    },
+                    constraints,
                 },
-                constraints,
-            };
-
-            await addDoc(collection(db, 'monthlyGoals'), monthlyGoal);
+            });
 
             if (onSuccess) {
                 onSuccess();

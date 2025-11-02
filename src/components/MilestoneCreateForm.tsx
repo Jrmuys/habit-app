@@ -3,8 +3,6 @@
 import { useState } from 'react';
 import { Target, X } from 'lucide-react';
 import { MilestoneSize, getMilestonePoints } from '@/types/misc';
-import { collection, addDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
 import { useProfile } from '@/hooks/useProfile';
 
 type MilestoneCreateFormProps = {
@@ -31,20 +29,14 @@ export default function MilestoneCreateForm({
 
         setIsSaving(true);
         try {
-            const milestoneData: any = {
-                userId: currentUserProfile.uid,
+            // Use Firebase Callable Function to create milestone
+            const { createMilestone } = await import('@/lib/firebaseFunctions');
+
+            await createMilestone({
                 name: name.trim(),
-                size,
-                isCompleted: false,
-                createdAt: new Date().toISOString(),
-            };
-
-            // Only add description if it's not empty
-            if (description.trim()) {
-                milestoneData.description = description.trim();
-            }
-
-            await addDoc(collection(db, 'milestones'), milestoneData);
+                description: description.trim() || undefined,
+                pointValue: pointValue,
+            });
 
             if (onSuccess) {
                 onSuccess();

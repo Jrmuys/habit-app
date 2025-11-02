@@ -22,10 +22,9 @@ export function useActivityLog() {
         let activityUnsubscribe: (() => void) | undefined;
 
         try {
-            // Subscribe to couple's activity log
+            // Subscribe to couple's activity log (subcollection under couples)
             const activityQuery = query(
-                collection(db, 'activityLog'),
-                where('coupleId', '==', currentUserProfile.coupleId),
+                collection(db, 'couples', currentUserProfile.coupleId, 'activityLog'),
                 orderBy('timestamp', 'desc'),
                 limit(50) // Limit to recent 50 entries
             );
@@ -62,7 +61,11 @@ export function useActivityLog() {
         };
 
         try {
-            const docRef = await addDoc(collection(db, 'activityLog'), newEntry);
+            // Write to subcollection under couples
+            const docRef = await addDoc(
+                collection(db, 'couples', currentUserProfile.coupleId, 'activityLog'), 
+                newEntry
+            );
             return docRef.id;
         } catch (err) {
             throw new Error(err instanceof Error ? err.message : 'Failed to add activity entry');

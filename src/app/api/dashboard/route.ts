@@ -139,17 +139,17 @@ export async function POST(request: NextRequest) {
             isSingleUser = true;
         }
 
-        // Fetch all habit data for current user and partner
+        // Fetch all habit data for current user using subcollections
         const [
             userHabitTemplatesSnap,
             userMonthlyGoalsSnap,
             userHabitEntriesSnap,
             userMilestonesSnap,
         ] = await Promise.all([
-            db.collection('habits').where('userId', '==', userId).get(),
-            db.collection('monthlyGoals').where('userId', '==', userId).get(),
-            db.collection('habitEntries').where('userId', '==', userId).get(),
-            db.collection('milestones').where('userId', '==', userId).get(),
+            db.collection('users').doc(userId).collection('habitLibrary').get(),
+            db.collection('users').doc(userId).collection('monthlyGoals').get(),
+            db.collection('users').doc(userId).collection('habitEntries').get(),
+            db.collection('users').doc(userId).collection('milestones').get(),
         ]);
 
         const userHabitTemplates = userHabitTemplatesSnap.docs.map(
@@ -193,8 +193,8 @@ export async function POST(request: NextRequest) {
                 partnerMonthlyGoalsSnap,
                 partnerHabitEntriesSnap,
             ] = await Promise.all([
-                db.collection('monthlyGoals').where('userId', '==', partnerProfile.uid).get(),
-                db.collection('habitEntries').where('userId', '==', partnerProfile.uid).get(),
+                db.collection('users').doc(partnerProfile.uid).collection('monthlyGoals').get(),
+                db.collection('users').doc(partnerProfile.uid).collection('habitEntries').get(),
             ]);
 
             partnerMonthlyGoals = partnerMonthlyGoalsSnap.docs.map(
