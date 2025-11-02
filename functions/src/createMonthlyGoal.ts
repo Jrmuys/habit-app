@@ -26,14 +26,15 @@ export async function createMonthlyGoal(
     }
 
     // Verify the habit exists and belongs to the user
-    const habitDoc = await db.collection('habits').doc(goalData.habitId).get();
+    const habitDoc = await db
+        .collection('users')
+        .doc(userId)
+        .collection('habitLibrary')
+        .doc(goalData.habitId)
+        .get();
+    
     if (!habitDoc.exists) {
         throw new Error('Habit not found');
-    }
-    
-    const habitData = habitDoc.data();
-    if (habitData?.userId !== userId) {
-        throw new Error('Unauthorized: Habit does not belong to user');
     }
 
     // Create monthly goal
@@ -48,8 +49,12 @@ export async function createMonthlyGoal(
     };
 
     try {
-        // Write to top-level collection (will be migrated to subcollection in Phase 2)
-        const goalRef = await db.collection('monthlyGoals').add(newGoal);
+        // Write to subcollection under users/{userId}/monthlyGoals
+        const goalRef = await db
+            .collection('users')
+            .doc(userId)
+            .collection('monthlyGoals')
+            .add(newGoal);
         return goalRef.id;
     } catch (error) {
         console.error('Error creating monthly goal:', error);

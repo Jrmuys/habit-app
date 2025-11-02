@@ -12,8 +12,12 @@ export async function redeemReward(
     try {
         // Run in a transaction to ensure consistency
         const result = await db.runTransaction(async (transaction) => {
-            // Get reward
-            const rewardRef = db.collection('rewards').doc(rewardId);
+            // Get reward from subcollection
+            const rewardRef = db
+                .collection('users')
+                .doc(userId)
+                .collection('rewards')
+                .doc(rewardId);
             const rewardDoc = await transaction.get(rewardRef);
 
             if (!rewardDoc.exists) {
@@ -21,11 +25,6 @@ export async function redeemReward(
             }
 
             const rewardData = rewardDoc.data();
-            
-            // Verify ownership
-            if (rewardData?.userId !== userId) {
-                throw new Error('Unauthorized: Reward does not belong to user');
-            }
 
             // Check if already redeemed
             if (rewardData?.isRedeemed) {

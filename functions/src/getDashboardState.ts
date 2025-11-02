@@ -47,7 +47,7 @@ export async function getDashboardState(
         isSingleUser = true;
     }
 
-    // Fetch all habit data for current user and partner
+    // Fetch all habit data for current user and partner using subcollections
     const [
         userHabitTemplatesSnap,
         userMonthlyGoalsSnap,
@@ -57,26 +57,29 @@ export async function getDashboardState(
         partnerMonthlyGoalsSnap,
         partnerHabitEntriesSnap,
     ] = await Promise.all([
-        db.collection('habits').where('userId', '==', userId).get(),
-        db.collection('monthlyGoals').where('userId', '==', userId).get(),
-        db.collection('habitEntries').where('userId', '==', userId).get(),
-        db.collection('milestones').where('userId', '==', userId).get(),
+        db.collection('users').doc(userId).collection('habitLibrary').get(),
+        db.collection('users').doc(userId).collection('monthlyGoals').get(),
+        db.collection('users').doc(userId).collection('habitEntries').get(),
+        db.collection('users').doc(userId).collection('milestones').get(),
         partnerProfile
             ? db
-                  .collection('habits')
-                  .where('userId', '==', partnerProfile.uid)
+                  .collection('users')
+                  .doc(partnerProfile.uid)
+                  .collection('habitLibrary')
                   .get()
             : Promise.resolve({ docs: [] } as any),
         partnerProfile
             ? db
+                  .collection('users')
+                  .doc(partnerProfile.uid)
                   .collection('monthlyGoals')
-                  .where('userId', '==', partnerProfile.uid)
                   .get()
             : Promise.resolve({ docs: [] } as any),
         partnerProfile
             ? db
+                  .collection('users')
+                  .doc(partnerProfile.uid)
                   .collection('habitEntries')
-                  .where('userId', '==', partnerProfile.uid)
                   .get()
             : Promise.resolve({ docs: [] } as any),
     ]);

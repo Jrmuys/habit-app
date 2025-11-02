@@ -12,8 +12,12 @@ export async function completeMilestone(
     try {
         // Run in a transaction to ensure consistency
         const result = await db.runTransaction(async (transaction) => {
-            // Get milestone
-            const milestoneRef = db.collection('milestones').doc(milestoneId);
+            // Get milestone from subcollection
+            const milestoneRef = db
+                .collection('users')
+                .doc(userId)
+                .collection('milestones')
+                .doc(milestoneId);
             const milestoneDoc = await transaction.get(milestoneRef);
 
             if (!milestoneDoc.exists) {
@@ -21,11 +25,6 @@ export async function completeMilestone(
             }
 
             const milestoneData = milestoneDoc.data();
-            
-            // Verify ownership
-            if (milestoneData?.userId !== userId) {
-                throw new Error('Unauthorized: Milestone does not belong to user');
-            }
 
             // Check if already completed
             if (milestoneData?.isCompleted) {

@@ -43,8 +43,12 @@ export async function createReward(
     };
 
     try {
-        // Write to top-level collection (will be migrated to subcollection in Phase 2)
-        const rewardRef = await db.collection('rewards').add(newReward);
+        // Write to subcollection under users/{userId}/rewards
+        const rewardRef = await db
+            .collection('users')
+            .doc(userId)
+            .collection('rewards')
+            .add(newReward);
         return rewardRef.id;
     } catch (error) {
         console.error('Error creating reward:', error);

@@ -44,8 +44,12 @@ export async function createHabit(
     };
 
     try {
-        // Write to top-level collection (will be migrated to subcollection in Phase 2)
-        const habitRef = await db.collection('habits').add(newTemplate);
+        // Write to subcollection under users/{userId}/habitLibrary
+        const habitRef = await db
+            .collection('users')
+            .doc(userId)
+            .collection('habitLibrary')
+            .add(newTemplate);
         const habitId = habitRef.id;
 
         let monthlyGoalId: string | undefined;
@@ -73,7 +77,11 @@ export async function createHabit(
                 constraints: habitData.monthlyGoalConfig?.constraints || [],
             };
 
-            const goalRef = await db.collection('monthlyGoals').add(newGoal);
+            const goalRef = await db
+                .collection('users')
+                .doc(userId)
+                .collection('monthlyGoals')
+                .add(newGoal);
             monthlyGoalId = goalRef.id;
         }
 

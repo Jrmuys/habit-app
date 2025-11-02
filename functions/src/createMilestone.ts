@@ -25,14 +25,15 @@ export async function createMilestone(
 
     // If habitId is provided, verify it exists and belongs to the user
     if (milestoneData.habitId) {
-        const habitDoc = await db.collection('habits').doc(milestoneData.habitId).get();
+        const habitDoc = await db
+            .collection('users')
+            .doc(userId)
+            .collection('habitLibrary')
+            .doc(milestoneData.habitId)
+            .get();
+        
         if (!habitDoc.exists) {
             throw new Error('Habit not found');
-        }
-        
-        const habitData = habitDoc.data();
-        if (habitData?.userId !== userId) {
-            throw new Error('Unauthorized: Habit does not belong to user');
         }
     }
 
@@ -48,8 +49,12 @@ export async function createMilestone(
     };
 
     try {
-        // Write to top-level collection (will be migrated to subcollection in Phase 2)
-        const milestoneRef = await db.collection('milestones').add(newMilestone);
+        // Write to subcollection under users/{userId}/milestones
+        const milestoneRef = await db
+            .collection('users')
+            .doc(userId)
+            .collection('milestones')
+            .add(newMilestone);
         return milestoneRef.id;
     } catch (error) {
         console.error('Error creating milestone:', error);

@@ -8,9 +8,41 @@ service cloud.firestore {
     match /users/{userId} {
       allow read: if request.auth != null;
       allow write: if request.auth.uid == userId;
+
+      // Subcollections under users/{userId}/
+      // habitLibrary subcollection
+      match /habitLibrary/{habitId} {
+        allow read: if request.auth != null && (request.auth.uid == userId || isPartner(userId));
+        allow write: if request.auth.uid == userId;
+      }
+
+      // monthlyGoals subcollection
+      match /monthlyGoals/{goalId} {
+        allow read: if request.auth != null && (request.auth.uid == userId || isPartner(userId));
+        allow write: if request.auth.uid == userId;
+      }
+
+      // habitEntries subcollection
+      match /habitEntries/{entryId} {
+        allow read: if request.auth != null && (request.auth.uid == userId || isPartner(userId));
+        allow write: if request.auth.uid == userId;
+      }
+
+      // rewards subcollection
+      match /rewards/{rewardId} {
+        allow read: if request.auth != null && (request.auth.uid == userId || isPartner(userId));
+        allow write: if request.auth.uid == userId;
+      }
+
+      // milestones subcollection
+      match /milestones/{milestoneId} {
+        allow read: if request.auth != null && (request.auth.uid == userId || isPartner(userId));
+        allow write: if request.auth.uid == userId;
+      }
     }
 
-    // Generic rules for collections where users own their documents
+    // Legacy top-level collections (kept for backward compatibility during migration)
+    // These should be removed after migration is complete
     match /habits/{habitId} {
         allow read: if request.auth != null;
         allow write: if request.auth.uid == request.resource.data.userId;
@@ -43,6 +75,12 @@ service cloud.firestore {
     
     match /couples/{coupleId}/activityLog/{logId} {
         allow read, write: if request.auth != null; // Or restrict to users in the couple
+    }
+
+    // Helper function to check if the requesting user is the partner of userId
+    function isPartner(userId) {
+      let userDoc = get(/databases/$(database)/documents/users/$(userId));
+      return userDoc.data.partnerId == request.auth.uid;
     }
   }
 }
