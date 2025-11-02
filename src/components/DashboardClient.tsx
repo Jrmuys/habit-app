@@ -148,7 +148,6 @@ export default function DashboardClient({ dashboardState }: DashboardClientProps
     // Get today's day index in the current week (0 = Sunday, 6 = Saturday)
     const todayIndex = new Date().getDay();
 
-    const userName = currentUserProfile?.name || 'User';
     const userPoints = currentUserProfile?.points || 0;
 
     // Check if it's the last week of the month for "Plan Next Month" notification
