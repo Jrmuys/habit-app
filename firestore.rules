@@ -1,0 +1,48 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Users can read their own profile and their partner's profile.
+    // They can only update their own profile.
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth.uid == userId;
+    }
+
+    // Generic rules for collections where users own their documents
+    match /habits/{habitId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth.uid == request.resource.data.userId;
+    }
+    
+    match /monthlyGoals/{goalId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth.uid == request.resource.data.userId;
+    }
+
+    match /habitEntries/{entryId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth.uid == request.resource.data.userId;
+    }
+
+    match /rewards/{rewardId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth.uid == request.resource.data.userId;
+    }
+
+    match /milestones/{milestoneId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth.uid == request.resource.data.userId;
+    }
+
+    // Rules for couple-related data
+    match /couples/{coupleId} {
+      allow read, write: if request.auth != null; // Adjust as needed for more specific security
+    }
+    
+    match /couples/{coupleId}/activityLog/{logId} {
+        allow read, write: if request.auth != null; // Or restrict to users in the couple
+    }
+  }
+}

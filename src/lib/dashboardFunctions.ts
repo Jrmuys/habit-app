@@ -50,11 +50,15 @@ export type DashboardState = {
 /**
  * Calls the API route to get dashboard state
  */
-export async function getDashboardStateFromFunction(userId: string, signal?: AbortSignal): Promise<DashboardState> {
+export async function getDashboardStateFromFunction(
+    userId: string,
+    idToken: string
+): Promise<DashboardState> {
     const response = await fetch('/api/dashboard', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${idToken}`,
         },
         body: JSON.stringify({ userId }),
         signal,
