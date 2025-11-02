@@ -2,7 +2,12 @@
 
 import { useState } from 'react';
 import { Plus, X, Shield, TrendingUp, Target, Info } from 'lucide-react';
-import { HabitTemplate, HabitMilestone, ConstraintRule, ValueFrequencyConstraint } from '@/types';
+import {
+    HabitTemplate,
+    HabitMilestone,
+    ConstraintRule,
+    ValueFrequencyConstraint,
+} from '@/types';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { useProfile } from '@/hooks/useProfile';
@@ -12,20 +17,21 @@ type HabitCreateFormProps = {
     onCancel?: () => void;
 };
 
-export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateFormProps) {
+export default function HabitCreateForm({
+    onSuccess,
+    onCancel,
+}: HabitCreateFormProps) {
     const { userProfile } = useProfile();
-    
+
     // Form state
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [frequency, setFrequency] = useState<'DAILY' | 'CUSTOM'>('DAILY');
     const [basePoints, setBasePoints] = useState(100);
-    const [partialPoints, setPartialPoints] = useState(25);
     // Note: streakShield is always enabled automatically at 7-day streaks
     // This UI toggle is just for preview/information purposes
     const [streakShield, setStreakShield] = useState(true);
-    const [allowShowUp, setAllowShowUp] = useState(false);
-    const [showUpPoints, setShowUpPoints] = useState(1);
+    const [allowPartial, setAllowPartial] = useState(false);
     const [milestones, setMilestones] = useState<HabitMilestone[]>([]);
     const [constraints, setConstraints] = useState<ConstraintRule[]>([]);
     const [isSaving, setIsSaving] = useState(false);
@@ -38,14 +44,19 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
     const [showConstraintForm, setShowConstraintForm] = useState(false);
     const [newConstraintValue, setNewConstraintValue] = useState('');
     const [newConstraintFrequency, setNewConstraintFrequency] = useState(1);
-    const [newConstraintPeriod, setNewConstraintPeriod] = useState<'DAILY' | 'WEEKLY' | 'MONTHLY'>('WEEKLY');
+    const [newConstraintPeriod, setNewConstraintPeriod] = useState<
+        'DAILY' | 'WEEKLY' | 'MONTHLY'
+    >('WEEKLY');
 
     const handleAddMilestone = () => {
         if (newMilestoneName.trim()) {
-            setMilestones([...milestones, {
-                name: newMilestoneName.trim(),
-                pointValue: newMilestonePoints
-            }]);
+            setMilestones([
+                ...milestones,
+                {
+                    name: newMilestoneName.trim(),
+                    pointValue: newMilestonePoints,
+                },
+            ]);
             setNewMilestoneName('');
             setNewMilestonePoints(500);
         }
@@ -63,8 +74,8 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                 frequency: newConstraintFrequency,
                 targetValue: {
                     operator: 'EQUALS',
-                    value: newConstraintValue.trim()
-                }
+                    value: newConstraintValue.trim(),
+                },
             };
             setConstraints([...constraints, constraint]);
             setNewConstraintValue('');
@@ -88,15 +99,16 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                 userId: userProfile.uid,
                 name: name.trim(),
                 description: description.trim() || undefined,
-                allowShowUp,
-                showUpPoints: allowShowUp ? showUpPoints : undefined,
+                allowPartial,
                 basePoints,
-                partialPoints,
                 milestones: milestones.length > 0 ? milestones : undefined,
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
             };
 
-            const habitRef = await addDoc(collection(db, 'habits'), habitTemplate);
+            const habitRef = await addDoc(
+                collection(db, 'habits'),
+                habitTemplate
+            );
 
             // Create monthly goal for current month
             const currentMonth = new Date().toISOString().slice(0, 7);
@@ -113,10 +125,10 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                 logging: {
                     window: {
                         startOffsetHours: 0,
-                        endOffsetHours: 24
-                    }
+                        endOffsetHours: 24,
+                    },
                 },
-                constraints
+                constraints,
             };
 
             await addDoc(collection(db, 'monthlyGoals'), monthlyGoal);
@@ -130,7 +142,7 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                         name: milestone.name,
                         pointValue: milestone.pointValue,
                         isCompleted: false,
-                        createdAt: new Date().toISOString()
+                        createdAt: new Date().toISOString(),
                     });
                 }
             }
@@ -151,12 +163,11 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
         let multiplier = 1.0;
         if (streakDays >= 14) multiplier = 1.5;
         else if (streakDays >= 7) multiplier = 1.2;
-        
+
         return {
             base: Math.round(basePoints * multiplier),
-            partial: Math.round(partialPoints * multiplier),
-            showUp: showUpPoints, // Show up points are never multiplied
-            multiplier
+            partial: 25, // Partial/Just Show Up always awards 25 points with NO multiplier
+            multiplier,
         };
     };
 
@@ -165,10 +176,15 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
 
     return (
         <div className="min-h-screen bg-slate-900 text-slate-100 p-4">
-            <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-6">
+            <form
+                onSubmit={handleSubmit}
+                className="max-w-2xl mx-auto space-y-6"
+            >
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
-                    <h1 className="text-3xl font-bold text-slate-100">Create New Habit</h1>
+                    <h1 className="text-3xl font-bold text-slate-100">
+                        Create New Habit
+                    </h1>
                     {onCancel && (
                         <button
                             type="button"
@@ -182,8 +198,10 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
 
                 {/* Basic Info */}
                 <div className="bg-slate-800 rounded-lg p-6 space-y-4">
-                    <h2 className="text-xl font-semibold text-slate-100 mb-4">Basic Information</h2>
-                    
+                    <h2 className="text-xl font-semibold text-slate-100 mb-4">
+                        Basic Information
+                    </h2>
+
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
                             Habit Name *
@@ -217,7 +235,11 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                         </label>
                         <select
                             value={frequency}
-                            onChange={(e) => setFrequency(e.target.value as 'DAILY' | 'CUSTOM')}
+                            onChange={(e) =>
+                                setFrequency(
+                                    e.target.value as 'DAILY' | 'CUSTOM'
+                                )
+                            }
                             className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                         >
                             <option value="DAILY">Daily</option>
@@ -228,8 +250,10 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
 
                 {/* Points Configuration */}
                 <div className="bg-slate-800 rounded-lg p-6 space-y-4">
-                    <h2 className="text-xl font-semibold text-slate-100 mb-4">Points Configuration</h2>
-                    
+                    <h2 className="text-xl font-semibold text-slate-100 mb-4">
+                        Points Configuration
+                    </h2>
+
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-2">
                             Base Points (Full Completion)
@@ -237,38 +261,47 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                         <input
                             type="number"
                             value={basePoints}
-                            onChange={(e) => setBasePoints(Number(e.target.value))}
+                            onChange={(e) =>
+                                setBasePoints(Number(e.target.value))
+                            }
                             min="1"
                             className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                         />
+                        <p className="text-xs text-slate-400 mt-1">
+                            Points earned for full completion, eligible for
+                            streak multiplier
+                        </p>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Partial Points (Partial Completion)
-                        </label>
-                        <input
-                            type="number"
-                            value={partialPoints}
-                            onChange={(e) => setPartialPoints(Number(e.target.value))}
-                            min="1"
-                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                        />
+                    <div className="bg-slate-700 rounded-lg p-4">
+                        <div className="text-sm font-medium text-slate-300 mb-1">
+                            Partial Completion Points: 25 (Fixed)
+                        </div>
+                        <p className="text-xs text-slate-400">
+                            Partial completion always awards 25 points with no
+                            multiplier
+                        </p>
                     </div>
                 </div>
 
                 {/* Streak Features */}
                 <div className="bg-slate-800 rounded-lg p-6 space-y-4">
-                    <h2 className="text-xl font-semibold text-slate-100 mb-4">Streak Features</h2>
-                    
+                    <h2 className="text-xl font-semibold text-slate-100 mb-4">
+                        Streak Features
+                    </h2>
+
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <Shield className="h-5 w-5 text-emerald-500" />
-                            <span className="text-sm font-medium text-slate-300">Streak Shield</span>
+                            <span className="text-sm font-medium text-slate-300">
+                                Streak Shield
+                            </span>
                             <div className="relative group">
                                 <Info className="h-4 w-4 text-slate-400 cursor-help" />
                                 <div className="hidden group-hover:block absolute left-0 bottom-full mb-2 w-64 p-2 bg-slate-700 text-xs text-slate-300 rounded shadow-lg z-10">
-                                    Earned at 7-day streak. Protects against first missed day.
+                                    Earned every 7 days of full completion
+                                    streak (7, 14, 21...). Protects against
+                                    first missed day.
                                 </div>
                             </div>
                         </div>
@@ -281,7 +314,9 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                         >
                             <span
                                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                    streakShield ? 'translate-x-6' : 'translate-x-1'
+                                    streakShield
+                                        ? 'translate-x-6'
+                                        : 'translate-x-1'
                                 }`}
                             />
                         </button>
@@ -290,11 +325,14 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                     <div className="bg-slate-700 rounded-lg p-4">
                         <div className="flex items-center gap-2 mb-2">
                             <TrendingUp className="h-5 w-5 text-cyan-500" />
-                            <span className="text-sm font-medium text-slate-300">Streak Multiplier</span>
+                            <span className="text-sm font-medium text-slate-300">
+                                Streak Multiplier
+                            </span>
                             <div className="relative group">
                                 <Info className="h-4 w-4 text-slate-400 cursor-help" />
                                 <div className="hidden group-hover:block absolute left-0 bottom-full mb-2 w-64 p-2 bg-slate-600 text-xs text-slate-300 rounded shadow-lg z-10">
-                                    Automatically applied based on streak length
+                                    Only applies to FULL completions.
+                                    Partial/Just Show Up do NOT get multipliers.
                                 </div>
                             </div>
                         </div>
@@ -302,57 +340,67 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                             <div>Days 0-6: 1.0x (no multiplier)</div>
                             <div>Days 7-13: 1.2x multiplier</div>
                             <div>Days 14+: 1.5x multiplier</div>
+                            <div className="text-orange-400 text-xs mt-2">
+                                ⚠️ Only full completions count toward streak and
+                                earn multipliers
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Just Show Up */}
+                {/* Partial Completion / Just Show Up */}
                 <div className="bg-slate-800 rounded-lg p-6 space-y-4">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h2 className="text-xl font-semibold text-slate-100">Just Show Up</h2>
+                            <h2 className="text-xl font-semibold text-slate-100">
+                                Partial Completion / Just Show Up
+                            </h2>
                             <p className="text-sm text-slate-400 mt-1">
-                                Award minimal points for showing up, even without full completion
+                                Allow logging partial effort. Awards 25 points
+                                with NO multiplier.
                             </p>
                         </div>
                         <button
                             type="button"
-                            onClick={() => setAllowShowUp(!allowShowUp)}
+                            onClick={() => setAllowPartial(!allowPartial)}
                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                allowShowUp ? 'bg-cyan-500' : 'bg-slate-600'
+                                allowPartial ? 'bg-cyan-500' : 'bg-slate-600'
                             }`}
                         >
                             <span
                                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                    allowShowUp ? 'translate-x-6' : 'translate-x-1'
+                                    allowPartial
+                                        ? 'translate-x-6'
+                                        : 'translate-x-1'
                                 }`}
                             />
                         </button>
                     </div>
 
-                    {allowShowUp && (
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">
-                                Show Up Points
-                            </label>
-                            <input
-                                type="number"
-                                value={showUpPoints}
-                                onChange={(e) => setShowUpPoints(Number(e.target.value))}
-                                min="1"
-                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            />
-                            <p className="text-xs text-slate-400 mt-1">
-                                Points earned for showing up without full completion
+                    {allowPartial && (
+                        <div className="bg-slate-700 rounded-lg p-4">
+                            <p className="text-sm text-slate-300">
+                                When enabled, you can log any effort even if you
+                                didn&apos;t fully complete the habit.
                             </p>
+                            <div className="mt-3 text-xs text-slate-400 space-y-1">
+                                <div>✓ Maintains your streak</div>
+                                <div>✓ Awards 25 points (fixed)</div>
+                                <div>✗ Does NOT get streak multipliers</div>
+                                <div>
+                                    ✗ Does NOT count toward earning shields
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
 
                 {/* Milestones */}
                 <div className="bg-slate-800 rounded-lg p-6 space-y-4">
-                    <h2 className="text-xl font-semibold text-slate-100 mb-4">Milestones</h2>
-                    
+                    <h2 className="text-xl font-semibold text-slate-100 mb-4">
+                        Milestones
+                    </h2>
+
                     {milestones.length > 0 && (
                         <div className="space-y-2 mb-4">
                             {milestones.map((milestone, index) => (
@@ -363,13 +411,19 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                                     <div className="flex items-center gap-3">
                                         <Target className="h-5 w-5 text-orange-500" />
                                         <div>
-                                            <div className="font-medium text-slate-100">{milestone.name}</div>
-                                            <div className="text-sm text-orange-500">{milestone.pointValue} pts</div>
+                                            <div className="font-medium text-slate-100">
+                                                {milestone.name}
+                                            </div>
+                                            <div className="text-sm text-orange-500">
+                                                {milestone.pointValue} pts
+                                            </div>
                                         </div>
                                     </div>
                                     <button
                                         type="button"
-                                        onClick={() => handleRemoveMilestone(index)}
+                                        onClick={() =>
+                                            handleRemoveMilestone(index)
+                                        }
                                         className="text-slate-400 hover:text-red-500"
                                     >
                                         <X className="h-5 w-5" />
@@ -383,7 +437,9 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                         <input
                             type="text"
                             value={newMilestoneName}
-                            onChange={(e) => setNewMilestoneName(e.target.value)}
+                            onChange={(e) =>
+                                setNewMilestoneName(e.target.value)
+                            }
                             placeholder="Milestone name (e.g., 30-day streak)"
                             className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                         />
@@ -391,7 +447,11 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                             <input
                                 type="number"
                                 value={newMilestonePoints}
-                                onChange={(e) => setNewMilestonePoints(Number(e.target.value))}
+                                onChange={(e) =>
+                                    setNewMilestonePoints(
+                                        Number(e.target.value)
+                                    )
+                                }
                                 placeholder="Points"
                                 min="1"
                                 className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
@@ -410,11 +470,14 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
 
                 {/* Constraints */}
                 <div className="bg-slate-800 rounded-lg p-6 space-y-4">
-                    <h2 className="text-xl font-semibold text-slate-100 mb-4">Constraints (Optional)</h2>
+                    <h2 className="text-xl font-semibold text-slate-100 mb-4">
+                        Constraints (Optional)
+                    </h2>
                     <p className="text-sm text-slate-400 mb-4">
-                        Add frequency requirements for specific values (e.g., &quot;Gym&quot; 3x per week)
+                        Add frequency requirements for specific values (e.g.,
+                        &quot;Gym&quot; 3x per week)
                     </p>
-                    
+
                     {constraints.length > 0 && (
                         <div className="space-y-2 mb-4">
                             {constraints.map((constraint, index) => {
@@ -425,11 +488,22 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                                             className="flex items-center justify-between bg-slate-700 rounded-lg p-3"
                                         >
                                             <div className="text-sm text-slate-100">
-                                                <strong>{constraint.targetValue.value}</strong>: {constraint.frequency}x per {constraint.period.toLowerCase()}
+                                                <strong>
+                                                    {
+                                                        constraint.targetValue
+                                                            .value
+                                                    }
+                                                </strong>
+                                                : {constraint.frequency}x per{' '}
+                                                {constraint.period.toLowerCase()}
                                             </div>
                                             <button
                                                 type="button"
-                                                onClick={() => handleRemoveConstraint(index)}
+                                                onClick={() =>
+                                                    handleRemoveConstraint(
+                                                        index
+                                                    )
+                                                }
                                                 className="text-slate-400 hover:text-red-500"
                                             >
                                                 <X className="h-5 w-5" />
@@ -456,7 +530,9 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                             <input
                                 type="text"
                                 value={newConstraintValue}
-                                onChange={(e) => setNewConstraintValue(e.target.value)}
+                                onChange={(e) =>
+                                    setNewConstraintValue(e.target.value)
+                                }
                                 placeholder="Value (e.g., Gym, Run)"
                                 className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                             />
@@ -464,14 +540,25 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                                 <input
                                     type="number"
                                     value={newConstraintFrequency}
-                                    onChange={(e) => setNewConstraintFrequency(Number(e.target.value))}
+                                    onChange={(e) =>
+                                        setNewConstraintFrequency(
+                                            Number(e.target.value)
+                                        )
+                                    }
                                     placeholder="Times"
                                     min="1"
                                     className="w-24 px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                 />
                                 <select
                                     value={newConstraintPeriod}
-                                    onChange={(e) => setNewConstraintPeriod(e.target.value as 'DAILY' | 'WEEKLY' | 'MONTHLY')}
+                                    onChange={(e) =>
+                                        setNewConstraintPeriod(
+                                            e.target.value as
+                                                | 'DAILY'
+                                                | 'WEEKLY'
+                                                | 'MONTHLY'
+                                        )
+                                    }
                                     className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                 >
                                     <option value="DAILY">per Day</option>
@@ -501,38 +588,69 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
 
                 {/* Live Preview */}
                 <div className="bg-slate-800 rounded-lg p-6 space-y-4">
-                    <h2 className="text-xl font-semibold text-slate-100 mb-4">Points Preview</h2>
-                    
+                    <h2 className="text-xl font-semibold text-slate-100 mb-4">
+                        Points Preview
+                    </h2>
+
                     <div className="space-y-3">
                         <div className="bg-slate-700 rounded-lg p-4">
-                            <div className="font-semibold text-slate-100 mb-2">Days 0-6 (No Multiplier)</div>
+                            <div className="font-semibold text-slate-100 mb-2">
+                                Days 0-6 (No Multiplier)
+                            </div>
                             <div className="space-y-1 text-sm text-slate-300">
                                 <div>Full completion: {basePoints} pts</div>
-                                <div>Partial completion: {partialPoints} pts</div>
-                                {allowShowUp && <div>Show up: {showUpPoints} pts</div>}
+                                {allowPartial && (
+                                    <div className="text-slate-400">
+                                        Partial completion: 25 pts (no
+                                        multiplier)
+                                    </div>
+                                )}
                             </div>
                         </div>
 
                         <div className="bg-slate-700 rounded-lg p-4">
                             <div className="font-semibold text-slate-100 mb-2">
-                                Days 7-13 ({preview7Days.multiplier}x Multiplier)
-                                {streakShield && <span className="ml-2 text-emerald-500 text-sm">+ Shield Earned</span>}
+                                Days 7-13 ({preview7Days.multiplier}x
+                                Multiplier)
+                                {streakShield && (
+                                    <span className="ml-2 text-emerald-500 text-sm">
+                                        + Shield Earned
+                                    </span>
+                                )}
                             </div>
                             <div className="space-y-1 text-sm text-slate-300">
-                                <div>Full completion: {preview7Days.base} pts</div>
-                                <div>Partial completion: {preview7Days.partial} pts</div>
-                                {allowShowUp && <div>Show up: {preview7Days.showUp} pts (no multiplier)</div>}
+                                <div>
+                                    Full completion: {preview7Days.base} pts
+                                </div>
+                                {allowPartial && (
+                                    <div className="text-slate-400">
+                                        Partial completion: 25 pts (no
+                                        multiplier)
+                                    </div>
+                                )}
                             </div>
                         </div>
 
                         <div className="bg-slate-700 rounded-lg p-4">
                             <div className="font-semibold text-slate-100 mb-2">
-                                Days 14+ ({preview14Days.multiplier}x Multiplier)
+                                Days 14+ ({preview14Days.multiplier}x
+                                Multiplier)
+                                {streakShield && (
+                                    <span className="ml-2 text-emerald-500 text-sm">
+                                        + Shield Earned
+                                    </span>
+                                )}
                             </div>
                             <div className="space-y-1 text-sm text-slate-300">
-                                <div>Full completion: {preview14Days.base} pts</div>
-                                <div>Partial completion: {preview14Days.partial} pts</div>
-                                {allowShowUp && <div>Show up: {preview14Days.showUp} pts (no multiplier)</div>}
+                                <div>
+                                    Full completion: {preview14Days.base} pts
+                                </div>
+                                {allowPartial && (
+                                    <div className="text-slate-400">
+                                        Partial completion: 25 pts (no
+                                        multiplier)
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
