@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Edit3, Shield, TrendingUp, Target, CheckCircle2, Flame } from 'lucide-react';
+import { Edit3, Shield, TrendingUp, Target, CheckCircle2, Flame, Plus } from 'lucide-react';
 import HabitLoggingDialog from '@/components/HabitLoggingDialog';
 import { DashboardState } from '@/lib/dashboardFunctions';
 import { useHabitsSimplified } from '@/hooks/useHabitsSimplified';
@@ -67,12 +67,22 @@ export default function DashboardClient({ dashboardState }: DashboardClientProps
             <header className="bg-slate-800 border-b border-slate-700 p-4">
                 <div className="flex justify-between items-center mb-4">
                     <h1 className="text-3xl font-bold text-slate-100">Dashboard</h1>
-                    <button
-                        onClick={() => router.push('/edit-habits')}
-                        className="p-2 rounded-lg hover:bg-slate-700 transition-colors"
-                    >
-                        <Edit3 className="h-6 w-6 text-slate-400" />
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => router.push('/create-habit')}
+                            className="p-2 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors"
+                            title="Create New Habit"
+                        >
+                            <Plus className="h-6 w-6 text-white" />
+                        </button>
+                        <button
+                            onClick={() => router.push('/edit-habits')}
+                            className="p-2 rounded-lg hover:bg-slate-700 transition-colors"
+                            title="Edit Habits"
+                        >
+                            <Edit3 className="h-6 w-6 text-slate-400" />
+                        </button>
+                    </div>
                 </div>
                 
                 {/* Points Display */}
