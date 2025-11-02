@@ -6,6 +6,17 @@ export type Reward = {
     createdAt: string; // ISO 8601 timestamp
 };
 
+export type Milestone = {
+    milestoneId: string;
+    userId: string;
+    name: string;
+    description?: string;
+    pointValue: number; // Fixed point value (e.g., 150, 500, 1500)
+    isCompleted: boolean;
+    completedAt?: string; // ISO 8601 timestamp
+    createdAt: string; // ISO 8601 timestamp
+};
+
 export type ActivityLogEntry = {
     logEntryId: string;
     coupleId: string;
