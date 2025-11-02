@@ -31,14 +31,20 @@ export default function MilestoneCreateForm({
 
         setIsSaving(true);
         try {
-            await addDoc(collection(db, 'milestones'), {
+            const milestoneData: any = {
                 userId: currentUserProfile.uid,
                 name: name.trim(),
-                description: description.trim() || undefined,
                 size,
                 isCompleted: false,
                 createdAt: new Date().toISOString(),
-            });
+            };
+
+            // Only add description if it's not empty
+            if (description.trim()) {
+                milestoneData.description = description.trim();
+            }
+
+            await addDoc(collection(db, 'milestones'), milestoneData);
 
             if (onSuccess) {
                 onSuccess();
