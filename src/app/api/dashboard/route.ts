@@ -279,7 +279,7 @@ export async function POST(request: NextRequest) {
                 entries,
                 isCompleted: entries.length > 0,
                 canCompleteToday:
-                    goal.logging.allowNextDayCompletion && entries.length === 0,
+                    (goal.logging.allowNextDayCompletion && entries.length === 0) || false,
                 yesterdayDate,
                 streak,
             };

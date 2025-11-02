@@ -226,7 +226,7 @@ export default function DashboardClient({ dashboardState }: DashboardClientProps
                                     className={`bg-slate-800 p-4 rounded-lg shadow-lg flex items-center justify-between ${
                                         canCompleteToday ? 'cursor-pointer transition-colors hover:bg-slate-700' : ''
                                     }`}
-                                    onClick={() => canCompleteToday && handleHabitClick(goal, yesterdayDate, null)}
+                                    onClick={() => canCompleteToday && handleHabitClick(goal, yesterdayDate, undefined)}
                                 >
                                     <div className="flex items-center gap-4">
                                         <span className="text-3xl">{template?.icon || '⭐'}</span>
