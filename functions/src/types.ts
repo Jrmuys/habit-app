@@ -6,6 +6,11 @@ export type HabitTemplate = {
     name: string;
     description?: string;
     icon?: string;
+    allowShowUp?: boolean; // "Just Show Up" feature
+    showUpPoints?: number; // Points for "show up" days (default 1)
+    basePoints?: number; // Points for full completion (default 100)
+    partialPoints?: number; // Points for partial completion (default 25)
+    milestones?: HabitMilestone[]; // Milestones associated with this habit
     createdAt: string;
 };
 
@@ -26,7 +31,7 @@ export type HabitEntry = {
     userId: string;
     timestamp: string;
     targetDate: string;
-    value: string | number | boolean;
+    value: string | number | boolean | 'showUp'; // Added 'showUp' for "just show up" entries
 };
 
 export type UIRule = {
@@ -69,6 +74,12 @@ export type ValueFrequencyConstraint = BaseConstraint & {
 };
 
 export type ConstraintRule = GraceDaysConstraint | ValueFrequencyConstraint;
+
+// Habit-specific milestone (part of habit configuration)
+export type HabitMilestone = {
+    name: string;
+    pointValue: number;
+};
 
 export type UserProfile = {
     uid: string;
