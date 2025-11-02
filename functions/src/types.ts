@@ -109,6 +109,17 @@ export type Milestone = {
     createdAt: string;
 };
 
+export type Reward = {
+    rewardId: string;
+    userId: string;
+    name: string;
+    description?: string;
+    cost: number;
+    isRedeemed: boolean;
+    redeemedAt?: string;
+    createdAt: string;
+};
+
 export type DashboardState = {
     currentUserProfile: UserProfile;
     partnerProfile: UserProfile | null;
