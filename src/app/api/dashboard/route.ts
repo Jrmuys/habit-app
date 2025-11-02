@@ -4,40 +4,99 @@ import {
     HabitTemplate,
     MonthlyGoal,
     HabitEntry,
+    Milestone,
 } from '@/types';
+import { UserProfile, DashboardState, HabitStreak } from '@/lib/dashboardFunctions';
 
-export type UserProfile = {
-    uid: string;
-    email: string;
-    name: string;
-    points: number;
-    partnerId?: string;
-};
+// Maximum number of days to look back when calculating streaks
+const MAX_STREAK_CALCULATION_DAYS = 90;
 
-export type DashboardState = {
-    currentUserProfile: UserProfile;
-    partnerProfile: UserProfile | null;
-    isSingleUser: boolean;
-    todaysHabits: Array<{
-        goal: MonthlyGoal;
-        template: HabitTemplate | undefined;
-        entry: HabitEntry | undefined;
-        today: string;
-    }>;
-    yesterdayHabits: Array<{
-        goal: MonthlyGoal;
-        template: HabitTemplate | undefined;
-        entries: HabitEntry[];
-        isCompleted: boolean;
-        canCompleteToday: boolean;
-        yesterdayDate: string;
-    }>;
-    weeklyData: Array<{
-        user: string;
-        days: boolean[];
-        userIndex: number;
-    }>;
-};
+/**
+ * Calculate streak information for a habit based on its entries
+ */
+function calculateStreak(
+    monthlyGoalId: string,
+    entries: HabitEntry[],
+    todayDate: string
+): HabitStreak {
+    // Filter entries for this goal and sort by date descending
+    const goalEntries = entries
+        .filter((e) => e.monthlyGoalId === monthlyGoalId)
+        .sort((a, b) => b.targetDate.localeCompare(a.targetDate));
+
+    if (goalEntries.length === 0) {
+        return {
+            currentStreak: 0,
+            multiplier: 1.0,
+            hasShield: false,
+            shieldActive: false,
+            lastCompletedDate: null,
+        };
+    }
+
+    // Calculate current streak by checking consecutive days backwards from today
+    let currentStreak = 0;
+    const checkDate = new Date(todayDate);
+    let missedToday = false;
+    let shieldUsed = false;
+
+    // Check if today has an entry
+    const todayEntry = goalEntries.find((e) => e.targetDate === todayDate);
+    if (!todayEntry) {
+        missedToday = true;
+        // Start checking from yesterday
+        checkDate.setDate(checkDate.getDate() - 1);
+    } else {
+        currentStreak = 1;
+        checkDate.setDate(checkDate.getDate() - 1);
+    }
+
+    // Count consecutive days backwards
+    while (true) {
+        const dateStr = checkDate.toISOString().slice(0, 10);
+        const hasEntry = goalEntries.some((e) => e.targetDate === dateStr);
+
+        if (hasEntry) {
+            currentStreak++;
+            checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+            // Missed a day - check if we can use shield
+            if (currentStreak >= 7 && !shieldUsed) {
+                // Shield protects this miss
+                shieldUsed = true;
+                checkDate.setDate(checkDate.getDate() - 1);
+                continue;
+            } else {
+                // Streak ends
+                break;
+            }
+        }
+
+        // Safety check - don't go back too far
+        if (currentStreak > MAX_STREAK_CALCULATION_DAYS) break;
+    }
+
+    // If we missed today but have a streak of 7+, shield is active
+    const shieldActive = missedToday && currentStreak >= 7 && !shieldUsed;
+
+    // Calculate multiplier based on streak
+    let multiplier = 1.0;
+    if (currentStreak >= 14) {
+        multiplier = 1.5;
+    } else if (currentStreak >= 7) {
+        multiplier = 1.2;
+    }
+
+    const lastCompletedDate = goalEntries[0]?.targetDate || null;
+
+    return {
+        currentStreak,
+        multiplier,
+        hasShield: currentStreak >= 7,
+        shieldActive,
+        lastCompletedDate,
+    };
+}
 
 export async function POST(request: NextRequest) {
     try {
@@ -85,10 +144,12 @@ export async function POST(request: NextRequest) {
             userHabitTemplatesSnap,
             userMonthlyGoalsSnap,
             userHabitEntriesSnap,
+            userMilestonesSnap,
         ] = await Promise.all([
             db.collection('habits').where('userId', '==', userId).get(),
             db.collection('monthlyGoals').where('userId', '==', userId).get(),
             db.collection('habitEntries').where('userId', '==', userId).get(),
+            db.collection('milestones').where('userId', '==', userId).get(),
         ]);
 
         const userHabitTemplates = userHabitTemplatesSnap.docs.map(
@@ -113,6 +174,14 @@ export async function POST(request: NextRequest) {
                 entryId: doc.id,
                 ...doc.data(),
             } as HabitEntry)
+        );
+
+        const milestones = userMilestonesSnap.docs.map(
+            (doc) =>
+            ({
+                milestoneId: doc.id,
+                ...doc.data(),
+            } as Milestone)
         );
 
         // Fetch partner data if exists
@@ -161,11 +230,28 @@ export async function POST(request: NextRequest) {
                 (e) => e.monthlyGoalId === goal.monthlyGoalId && e.targetDate === today
             );
 
+            // Calculate streak
+            const streak = calculateStreak(goal.monthlyGoalId, userHabitEntries, today);
+
+            // Calculate recent history (last 7 days)
+            const recentHistory: boolean[] = [];
+            for (let i = 6; i >= 0; i--) {
+                const checkDate = new Date(today);
+                checkDate.setDate(checkDate.getDate() - i);
+                const dateStr = checkDate.toISOString().slice(0, 10);
+                const hasEntry = userHabitEntries.some(
+                    (e) => e.monthlyGoalId === goal.monthlyGoalId && e.targetDate === dateStr
+                );
+                recentHistory.push(hasEntry);
+            }
+
             return {
                 goal,
                 template,
                 entry,
                 today,
+                streak,
+                recentHistory,
             };
         });
 
@@ -184,6 +270,9 @@ export async function POST(request: NextRequest) {
                     entry.targetDate === yesterdayDate
             );
 
+            // Calculate streak
+            const streak = calculateStreak(goal.monthlyGoalId, userHabitEntries, today);
+
             return {
                 goal,
                 template,
@@ -192,6 +281,7 @@ export async function POST(request: NextRequest) {
                 canCompleteToday:
                     goal.logging.allowNextDayCompletion && entries.length === 0,
                 yesterdayDate,
+                streak,
             };
         });
 
@@ -242,6 +332,7 @@ export async function POST(request: NextRequest) {
             todaysHabits,
             yesterdayHabits,
             weeklyData,
+            milestones,
         };
 
         return NextResponse.json(dashboardState);
