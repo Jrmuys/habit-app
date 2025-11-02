@@ -6,10 +6,11 @@ export type HabitTemplate = {
     name: string;
     description?: string;
     icon?: string;
-    allowShowUp?: boolean; // "Just Show Up" feature
-    showUpPoints?: number; // Points for "show up" days (default 1)
+    allowPartial?: boolean; // "Partial Completion / Just Show Up" feature (combined)
     basePoints?: number; // Points for full completion (default 100)
-    partialPoints?: number; // Points for partial completion (default 25)
+    // NOTE: partialPoints and showUpPoints are deprecated - partial/showUp always awards 25 points
+    partialPoints?: number; // DEPRECATED: kept for backward compatibility
+    showUpPoints?: number; // DEPRECATED: kept for backward compatibility
     milestones?: HabitMilestone[]; // Milestones associated with this habit
     createdAt: string;
 };
