@@ -21,32 +21,30 @@ export function useDashboardState() {
             return;
         }
 
-        let isMounted = true;
+        const controller = new AbortController();
 
         const fetchDashboardState = async () => {
             try {
                 setLoading(true);
-                const state = await getDashboardStateFromFunction(user.uid);
-                if (isMounted) {
-                    setDashboardState(state);
-                    setError(null);
-                }
+                const state = await getDashboardStateFromFunction(user.uid, controller.signal);
+                setDashboardState(state);
+                setError(null);
             } catch (err) {
-                if (isMounted) {
-                    setError(err instanceof Error ? err.message : 'Failed to fetch dashboard state');
-                    console.error('Error fetching dashboard state:', err);
+                if (err.name === 'AbortError') {
+                    // Request was aborted, do not update state
+                    return;
                 }
+                setError(err instanceof Error ? err.message : 'Failed to fetch dashboard state');
+                console.error('Error fetching dashboard state:', err);
             } finally {
-                if (isMounted) {
-                    setLoading(false);
-                }
+                setLoading(false);
             }
         };
 
         fetchDashboardState();
 
         return () => {
-            isMounted = false;
+            controller.abort();
         };
     }, [user]);
 
