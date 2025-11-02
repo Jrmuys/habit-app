@@ -9,6 +9,9 @@ import {
 } from '@/types';
 import { UserProfile, DashboardState, HabitStreak } from '@/lib/dashboardFunctions';
 
+// Maximum number of days to look back when calculating streaks
+const MAX_STREAK_CALCULATION_DAYS = 90;
+
 /**
  * Calculate streak information for a habit based on its entries
  */
@@ -70,8 +73,8 @@ function calculateStreak(
             }
         }
 
-        // Safety check - don't go back more than 90 days
-        if (currentStreak > 90) break;
+        // Safety check - don't go back too far
+        if (currentStreak > MAX_STREAK_CALCULATION_DAYS) break;
     }
 
     // If we missed today but have a streak of 7+, shield is active
@@ -277,7 +280,7 @@ export async function POST(request: NextRequest) {
                 entries,
                 isCompleted: entries.length > 0,
                 canCompleteToday:
-                    !!goal.logging.allowNextDayCompletion && entries.length === 0,
+                    goal.logging.allowNextDayCompletion && entries.length === 0,
                 yesterdayDate,
                 streak,
             };

@@ -6,6 +6,7 @@ import { Edit3, Shield, TrendingUp, Target, CheckCircle2, Flame } from 'lucide-r
 import HabitLoggingDialog from '@/components/HabitLoggingDialog';
 import { DashboardState } from '@/lib/dashboardFunctions';
 import { useHabitsSimplified } from '@/hooks/useHabitsSimplified';
+import { MonthlyGoal, HabitEntry } from '@/types';
 
 type DashboardClientProps = {
     dashboardState: DashboardState;
@@ -25,16 +26,16 @@ export default function DashboardClient({ dashboardState }: DashboardClientProps
     // Dialog state
     const [dialogOpen, setDialogOpen] = useState(false);
     const [selectedHabit, setSelectedHabit] = useState<{
-        goal: any;
+        goal: MonthlyGoal;
         targetDate: string;
-        existingEntry: any;
+        existingEntry: HabitEntry | undefined;
     } | null>(null);
 
     // Handle habit click
     const handleHabitClick = async (
-        goal: any,
+        goal: MonthlyGoal,
         targetDate: string,
-        existingEntry: any
+        existingEntry: HabitEntry | undefined
     ) => {
         if (goal.ui.type === 'CHECKBOX') {
             // For checkbox habits, log directly without dialog
