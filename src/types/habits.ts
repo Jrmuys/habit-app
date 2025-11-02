@@ -5,12 +5,8 @@ export type HabitTemplate = {
     name: string;
     description?: string;
     icon?: string;
-    allowPartial?: boolean; // "Partial Completion / Just Show Up" feature (combined)
+    allowPartial?: boolean; // "Partial Completion / Just Show Up" feature - awards 25 points, no multiplier
     basePoints?: number; // Points for full completion (default 100)
-    // NOTE: partialPoints and showUpPoints are deprecated - partial/showUp always awards 25 points
-    partialPoints?: number; // DEPRECATED: kept for backward compatibility
-    showUpPoints?: number; // DEPRECATED: kept for backward compatibility
-    milestones?: HabitMilestone[]; // Milestones associated with this habit
     createdAt: string; // ISO 8601 timestamp
 };
 
@@ -74,9 +70,3 @@ export type ValueFrequencyConstraint = BaseConstraint & {
 };
 
 export type ConstraintRule = GraceDaysConstraint | ValueFrequencyConstraint;
-
-// Habit-specific milestone (part of habit configuration)
-export type HabitMilestone = {
-    name: string;
-    pointValue: number;
-};

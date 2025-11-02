@@ -6,17 +6,27 @@ export type Reward = {
     createdAt: string; // ISO 8601 timestamp
 };
 
+export type MilestoneSize = 'SMALL' | 'MEDIUM' | 'LARGE';
+
 export type Milestone = {
     milestoneId: string;
     userId: string;
-    habitId?: string; // Optional: links milestone to a specific habit
     name: string;
     description?: string;
-    pointValue: number; // Fixed point value (e.g., 150, 500, 1500)
+    size: MilestoneSize; // Determines point value: SMALL=150, MEDIUM=500, LARGE=1500
     isCompleted: boolean;
     completedAt?: string; // ISO 8601 timestamp
     createdAt: string; // ISO 8601 timestamp
 };
+
+// Helper to get point value from milestone size
+export function getMilestonePoints(size: MilestoneSize): number {
+    switch (size) {
+        case 'SMALL': return 150;
+        case 'MEDIUM': return 500;
+        case 'LARGE': return 1500;
+    }
+}
 
 export type ActivityLogEntry = {
     logEntryId: string;

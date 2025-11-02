@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, X, Shield, TrendingUp, Target, Info } from 'lucide-react';
+import { Plus, X, Shield, TrendingUp, Info } from 'lucide-react';
 import {
     HabitTemplate,
-    HabitMilestone,
     ConstraintRule,
     ValueFrequencyConstraint,
 } from '@/types';
@@ -32,13 +31,8 @@ export default function HabitCreateForm({
     // This UI toggle is just for preview/information purposes
     const [streakShield, setStreakShield] = useState(true);
     const [allowPartial, setAllowPartial] = useState(false);
-    const [milestones, setMilestones] = useState<HabitMilestone[]>([]);
     const [constraints, setConstraints] = useState<ConstraintRule[]>([]);
     const [isSaving, setIsSaving] = useState(false);
-
-    // Milestone form state
-    const [newMilestoneName, setNewMilestoneName] = useState('');
-    const [newMilestonePoints, setNewMilestonePoints] = useState(500);
 
     // Constraint form state
     const [showConstraintForm, setShowConstraintForm] = useState(false);
@@ -47,24 +41,6 @@ export default function HabitCreateForm({
     const [newConstraintPeriod, setNewConstraintPeriod] = useState<
         'DAILY' | 'WEEKLY' | 'MONTHLY'
     >('WEEKLY');
-
-    const handleAddMilestone = () => {
-        if (newMilestoneName.trim()) {
-            setMilestones([
-                ...milestones,
-                {
-                    name: newMilestoneName.trim(),
-                    pointValue: newMilestonePoints,
-                },
-            ]);
-            setNewMilestoneName('');
-            setNewMilestonePoints(500);
-        }
-    };
-
-    const handleRemoveMilestone = (index: number) => {
-        setMilestones(milestones.filter((_, i) => i !== index));
-    };
 
     const handleAddConstraint = () => {
         if (newConstraintValue.trim()) {
@@ -101,7 +77,6 @@ export default function HabitCreateForm({
                 description: description.trim() || undefined,
                 allowPartial,
                 basePoints,
-                milestones: milestones.length > 0 ? milestones : undefined,
                 createdAt: new Date().toISOString(),
             };
 
@@ -132,20 +107,6 @@ export default function HabitCreateForm({
             };
 
             await addDoc(collection(db, 'monthlyGoals'), monthlyGoal);
-
-            // Create individual milestone documents if any
-            if (milestones.length > 0) {
-                for (const milestone of milestones) {
-                    await addDoc(collection(db, 'milestones'), {
-                        userId: userProfile.uid,
-                        habitId: habitRef.id,
-                        name: milestone.name,
-                        pointValue: milestone.pointValue,
-                        isCompleted: false,
-                        createdAt: new Date().toISOString(),
-                    });
-                }
-            }
 
             if (onSuccess) {
                 onSuccess();
@@ -393,79 +354,6 @@ export default function HabitCreateForm({
                             </div>
                         </div>
                     )}
-                </div>
-
-                {/* Milestones */}
-                <div className="bg-slate-800 rounded-lg p-6 space-y-4">
-                    <h2 className="text-xl font-semibold text-slate-100 mb-4">
-                        Milestones
-                    </h2>
-
-                    {milestones.length > 0 && (
-                        <div className="space-y-2 mb-4">
-                            {milestones.map((milestone, index) => (
-                                <div
-                                    key={index}
-                                    className="flex items-center justify-between bg-slate-700 rounded-lg p-3"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <Target className="h-5 w-5 text-orange-500" />
-                                        <div>
-                                            <div className="font-medium text-slate-100">
-                                                {milestone.name}
-                                            </div>
-                                            <div className="text-sm text-orange-500">
-                                                {milestone.pointValue} pts
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            handleRemoveMilestone(index)
-                                        }
-                                        className="text-slate-400 hover:text-red-500"
-                                    >
-                                        <X className="h-5 w-5" />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    <div className="space-y-3">
-                        <input
-                            type="text"
-                            value={newMilestoneName}
-                            onChange={(e) =>
-                                setNewMilestoneName(e.target.value)
-                            }
-                            placeholder="Milestone name (e.g., 30-day streak)"
-                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                        />
-                        <div className="flex gap-3">
-                            <input
-                                type="number"
-                                value={newMilestonePoints}
-                                onChange={(e) =>
-                                    setNewMilestonePoints(
-                                        Number(e.target.value)
-                                    )
-                                }
-                                placeholder="Points"
-                                min="1"
-                                className="flex-1 px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            />
-                            <button
-                                type="button"
-                                onClick={handleAddMilestone}
-                                className="px-4 py-2 bg-cyan-600 text-white font-semibold rounded-lg hover:bg-cyan-700 transition-colors flex items-center gap-2"
-                            >
-                                <Plus className="h-4 w-4" />
-                                Add
-                            </button>
-                        </div>
-                    </div>
                 </div>
 
                 {/* Constraints */}

@@ -7,6 +7,7 @@ import HabitLoggingDialog from '@/components/HabitLoggingDialog';
 import { DashboardState } from '@/lib/dashboardFunctions';
 import { useHabitsSimplified } from '@/hooks/useHabitsSimplified';
 import { MonthlyGoal, HabitEntry } from '@/types';
+import { getMilestonePoints } from '@/types/misc';
 
 type DashboardClientProps = {
     dashboardState: DashboardState;
@@ -194,9 +195,18 @@ export default function DashboardClient({ dashboardState }: DashboardClientProps
                 </section>
 
                 {/* Milestones Section */}
-                {activeMilestones.length > 0 && (
-                    <section>
-                        <h2 className="text-xl font-semibold text-slate-100 mb-4">Active Milestones</h2>
+                <section>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-xl font-semibold text-slate-100">Active Milestones</h2>
+                        <button
+                            onClick={() => router.push('/create-milestone')}
+                            className="px-3 py-1 rounded-lg bg-orange-600 hover:bg-orange-700 transition-colors text-sm font-medium text-white flex items-center gap-2"
+                        >
+                            <Plus className="h-4 w-4" />
+                            New Milestone
+                        </button>
+                    </div>
+                    {activeMilestones.length > 0 ? (
                         <div className="space-y-3">
                             {activeMilestones.map((milestone) => (
                                 <div
@@ -215,15 +225,19 @@ export default function DashboardClient({ dashboardState }: DashboardClientProps
                                         </div>
                                         <div className="text-right">
                                             <p className="text-lg font-bold text-orange-500">
-                                                {milestone.pointValue} pts
+                                                {getMilestonePoints(milestone.size)} pts
                                             </p>
                                         </div>
                                     </div>
                                 </div>
                             ))}
                         </div>
-                    </section>
-                )}
+                    ) : (
+                        <div className="bg-slate-800 rounded-lg p-6 text-center">
+                            <p className="text-slate-400">No active milestones. Create one to get started!</p>
+                        </div>
+                    )}
+                </section>
 
                 {/* Yesterday's Summary Section */}
                 {yesterdayHabits.length > 0 && (
@@ -291,7 +305,7 @@ export default function DashboardClient({ dashboardState }: DashboardClientProps
                                     <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                                     <span className="text-sm text-slate-400 flex-1">{milestone.name}</span>
                                     <span className="text-sm font-semibold text-emerald-500">
-                                        +{milestone.pointValue}
+                                        +{getMilestonePoints(milestone.size)}
                                     </span>
                                 </div>
                             ))}
