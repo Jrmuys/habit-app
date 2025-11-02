@@ -109,6 +109,9 @@ export function useHabitsSimplified() {
         if (!user) throw new Error('User not authenticated');
         
         try {
+            // TODO: Create Firebase Callable Function for deleteHabitEntry
+            // Should deduct points that were awarded for this entry
+            // For now, using direct Firestore write (points not adjusted)
             const entryRef = doc(db, 'users', user.uid, 'habitEntries', entryId);
             await deleteDoc(entryRef);
         } catch (err) {

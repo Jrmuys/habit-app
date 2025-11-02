@@ -1,3 +1,19 @@
+/**
+ * Dashboard API Route
+ * 
+ * ARCHITECTURAL NOTE:
+ * This API route co-exists with Firebase Callable Functions (getDashboardStateCallable).
+ * Both implementations:
+ * - Use subcollections (users/{uid}/habitLibrary, monthlyGoals, habitEntries, milestones)
+ * - Perform server-side calculations (streaks, weekly progress)
+ * - Return computed DashboardState to client
+ * 
+ * Decision: Keep both implementations
+ * - API route: Used by Next.js app in development/production
+ * - Firebase Function: Can be deployed separately for other clients
+ * 
+ * Both are functionally correct and use the same business logic patterns.
+ */
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase-admin'; // Use the admin SDK
 import {
