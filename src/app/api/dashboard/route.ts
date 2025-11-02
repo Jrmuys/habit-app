@@ -146,16 +146,10 @@ export async function POST(request: NextRequest) {
             userHabitEntriesSnap,
             userMilestonesSnap,
         ] = await Promise.all([
-<<<<<<< HEAD
-            getDocs(query(collection(db, 'habits'), where('userId', '==', userId))),
-            getDocs(query(collection(db, 'monthlyGoals'), where('userId', '==', userId))),
-            getDocs(query(collection(db, 'habitEntries'), where('userId', '==', userId))),
-            getDocs(query(collection(db, 'milestones'), where('userId', '==', userId))),
-=======
             db.collection('habits').where('userId', '==', userId).get(),
             db.collection('monthlyGoals').where('userId', '==', userId).get(),
             db.collection('habitEntries').where('userId', '==', userId).get(),
->>>>>>> origin/main
+            db.collection('milestones').where('userId', '==', userId).get(),
         ]);
 
         const userHabitTemplates = userHabitTemplatesSnap.docs.map(
@@ -184,10 +178,10 @@ export async function POST(request: NextRequest) {
 
         const milestones = userMilestonesSnap.docs.map(
             (doc) =>
-                ({
-                    milestoneId: doc.id,
-                    ...doc.data(),
-                } as Milestone)
+            ({
+                milestoneId: doc.id,
+                ...doc.data(),
+            } as Milestone)
         );
 
         // Fetch partner data if exists
