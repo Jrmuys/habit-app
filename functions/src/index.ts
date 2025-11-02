@@ -44,7 +44,7 @@ export const getDashboardStateCallable = functions.https.onCall(
 
 /**
  * HTTP Callable Function: Log Habit Entry
- * Logs a habit entry for the authenticated user
+ * Logs a habit entry for the authenticated user and awards points
  */
 export const logHabitEntryCallable = functions.https.onCall(
     async (request) => {
@@ -60,8 +60,8 @@ export const logHabitEntryCallable = functions.https.onCall(
         const data = request.data as Omit<HabitEntry, 'entryId' | 'userId' | 'timestamp'>;
 
         try {
-            const entryId = await logHabitEntry(userId, data);
-            return { entryId, success: true };
+            const result = await logHabitEntry(userId, data);
+            return { ...result, success: true };
         } catch (error) {
             console.error('Error logging habit entry:', error);
             throw new functions.https.HttpsError(
