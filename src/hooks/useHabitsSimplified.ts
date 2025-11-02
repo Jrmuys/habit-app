@@ -109,9 +109,17 @@ export function useHabitsSimplified() {
         if (!user) throw new Error('User not authenticated');
         
         try {
-            // TODO: Create Firebase Callable Function for deleteHabitEntry
-            // Should deduct points that were awarded for this entry
-            // For now, using direct Firestore write (points not adjusted)
+            // TODO: SECURITY - Create Firebase Callable Function for deleteHabitEntry
+            // CRITICAL: Should deduct points that were awarded for this entry
+            // Current implementation creates a security vulnerability:
+            // Users can artificially inflate points by repeatedly logging and deleting entries
+            // Points are awarded on log but never deducted on delete
+            // 
+            // Required implementation:
+            // 1. Fetch entry to get value and targetDate
+            // 2. Recalculate points that were awarded
+            // 3. Deduct points from user profile
+            // 4. Delete the entry (all in transaction)
             const entryRef = doc(db, 'users', user.uid, 'habitEntries', entryId);
             await deleteDoc(entryRef);
         } catch (err) {

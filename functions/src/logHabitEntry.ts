@@ -46,11 +46,17 @@ export async function logHabitEntry(
             : undefined;
 
         // Get all existing entries for this monthly goal to calculate streak
+        // Limit to last 90 days for performance (streaks don't typically exceed this)
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+        const cutoffDate = ninetyDaysAgo.toISOString().slice(0, 10);
+        
         const existingEntriesSnap = await db
             .collection('users')
             .doc(userId)
             .collection('habitEntries')
             .where('monthlyGoalId', '==', entryData.monthlyGoalId)
+            .where('targetDate', '>=', cutoffDate)
             .get();
 
         const existingEntries = existingEntriesSnap.docs.map(
@@ -66,7 +72,7 @@ export async function logHabitEntry(
         const allEntries = [
             ...existingEntries,
             {
-                entryId: 'temp',
+                entryId: 'CALCULATING_STREAK_TEMP', // Temporary ID for streak calculation only
                 userId,
                 timestamp: new Date().toISOString(),
                 ...entryData,
