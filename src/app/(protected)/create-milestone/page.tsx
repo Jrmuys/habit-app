@@ -17,7 +17,7 @@ export default function CreateMilestonePage() {
     };
 
     return (
-        <MilestoneCreateForm 
+        <MilestoneCreateForm
             onSuccess={handleSuccess}
             onCancel={handleCancel}
         />
