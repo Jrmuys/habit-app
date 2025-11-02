@@ -21,8 +21,6 @@ export function useDashboardState() {
             return;
         }
 
-        const controller = new AbortController();
-
         const fetchDashboardState = async () => {
             try {
                 setLoading(true);
@@ -30,12 +28,8 @@ export function useDashboardState() {
                 const state = await getDashboardStateFromFunction(user.uid, idToken);
                 setDashboardState(state);
                 setError(null);
-            } catch (err) {
-                if (err.name === 'AbortError') {
-                    // Request was aborted, do not update state
-                    return;
-                }
-                setError(err instanceof Error ? err.message : 'Failed to fetch dashboard state');
+            } catch (err: any) {
+                setError(err.message || 'Failed to fetch dashboard state');
                 console.error('Error fetching dashboard state:', err);
             } finally {
                 setLoading(false);
@@ -44,9 +38,7 @@ export function useDashboardState() {
 
         fetchDashboardState();
 
-        return () => {
-            controller.abort();
-        };
+        // No cleanup needed as we are not using an abort controller
     }, [user]);
 
     return {

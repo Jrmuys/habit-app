@@ -61,7 +61,6 @@ export async function getDashboardStateFromFunction(
             Authorization: `Bearer ${idToken}`,
         },
         body: JSON.stringify({ userId }),
-        signal,
     });
 
     if (!response.ok) {
