@@ -20,12 +20,10 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
     const [description, setDescription] = useState('');
     const [frequency, setFrequency] = useState<'DAILY' | 'CUSTOM'>('DAILY');
     const [basePoints, setBasePoints] = useState(100);
-    const [partialPoints, setPartialPoints] = useState(25);
     // Note: streakShield is always enabled automatically at 7-day streaks
     // This UI toggle is just for preview/information purposes
     const [streakShield, setStreakShield] = useState(true);
-    const [allowShowUp, setAllowShowUp] = useState(false);
-    const [showUpPoints, setShowUpPoints] = useState(1);
+    const [allowPartial, setAllowPartial] = useState(false);
     const [milestones, setMilestones] = useState<HabitMilestone[]>([]);
     const [constraints, setConstraints] = useState<ConstraintRule[]>([]);
     const [isSaving, setIsSaving] = useState(false);
@@ -88,10 +86,8 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                 userId: userProfile.uid,
                 name: name.trim(),
                 description: description.trim() || undefined,
-                allowShowUp,
-                showUpPoints: allowShowUp ? showUpPoints : undefined,
+                allowPartial,
                 basePoints,
-                partialPoints,
                 milestones: milestones.length > 0 ? milestones : undefined,
                 createdAt: new Date().toISOString()
             };
@@ -154,8 +150,7 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
         
         return {
             base: Math.round(basePoints * multiplier),
-            partial: Math.round(partialPoints * multiplier),
-            showUp: showUpPoints, // Show up points are never multiplied
+            partial: 25, // Partial/Just Show Up always awards 25 points with NO multiplier
             multiplier
         };
     };
@@ -241,19 +236,18 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                             min="1"
                             className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
                         />
+                        <p className="text-xs text-slate-400 mt-1">
+                            Points earned for full completion, eligible for streak multiplier
+                        </p>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-2">
-                            Partial Points (Partial Completion)
-                        </label>
-                        <input
-                            type="number"
-                            value={partialPoints}
-                            onChange={(e) => setPartialPoints(Number(e.target.value))}
-                            min="1"
-                            className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                        />
+                    <div className="bg-slate-700 rounded-lg p-4">
+                        <div className="text-sm font-medium text-slate-300 mb-1">
+                            Partial Completion Points: 25 (Fixed)
+                        </div>
+                        <p className="text-xs text-slate-400">
+                            Partial completion always awards 25 points with no multiplier
+                        </p>
                     </div>
                 </div>
 
@@ -268,7 +262,7 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                             <div className="relative group">
                                 <Info className="h-4 w-4 text-slate-400 cursor-help" />
                                 <div className="hidden group-hover:block absolute left-0 bottom-full mb-2 w-64 p-2 bg-slate-700 text-xs text-slate-300 rounded shadow-lg z-10">
-                                    Earned at 7-day streak. Protects against first missed day.
+                                    Earned every 7 days of full completion streak (7, 14, 21...). Protects against first missed day.
                                 </div>
                             </div>
                         </div>
@@ -294,7 +288,7 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                             <div className="relative group">
                                 <Info className="h-4 w-4 text-slate-400 cursor-help" />
                                 <div className="hidden group-hover:block absolute left-0 bottom-full mb-2 w-64 p-2 bg-slate-600 text-xs text-slate-300 rounded shadow-lg z-10">
-                                    Automatically applied based on streak length
+                                    Only applies to FULL completions. Partial/Just Show Up do NOT get multipliers.
                                 </div>
                             </div>
                         </div>
@@ -302,49 +296,48 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                             <div>Days 0-6: 1.0x (no multiplier)</div>
                             <div>Days 7-13: 1.2x multiplier</div>
                             <div>Days 14+: 1.5x multiplier</div>
+                            <div className="text-orange-400 text-xs mt-2">
+                                ⚠️ Only full completions count toward streak and earn multipliers
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Just Show Up */}
+                {/* Partial Completion / Just Show Up */}
                 <div className="bg-slate-800 rounded-lg p-6 space-y-4">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h2 className="text-xl font-semibold text-slate-100">Just Show Up</h2>
+                            <h2 className="text-xl font-semibold text-slate-100">Partial Completion / Just Show Up</h2>
                             <p className="text-sm text-slate-400 mt-1">
-                                Award minimal points for showing up, even without full completion
+                                Allow logging partial effort. Awards 25 points with NO multiplier.
                             </p>
                         </div>
                         <button
                             type="button"
-                            onClick={() => setAllowShowUp(!allowShowUp)}
+                            onClick={() => setAllowPartial(!allowPartial)}
                             className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                allowShowUp ? 'bg-cyan-500' : 'bg-slate-600'
+                                allowPartial ? 'bg-cyan-500' : 'bg-slate-600'
                             }`}
                         >
                             <span
                                 className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                                    allowShowUp ? 'translate-x-6' : 'translate-x-1'
+                                    allowPartial ? 'translate-x-6' : 'translate-x-1'
                                 }`}
                             />
                         </button>
                     </div>
 
-                    {allowShowUp && (
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-2">
-                                Show Up Points
-                            </label>
-                            <input
-                                type="number"
-                                value={showUpPoints}
-                                onChange={(e) => setShowUpPoints(Number(e.target.value))}
-                                min="1"
-                                className="w-full px-3 py-2 bg-slate-700 border border-slate-600 text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            />
-                            <p className="text-xs text-slate-400 mt-1">
-                                Points earned for showing up without full completion
+                    {allowPartial && (
+                        <div className="bg-slate-700 rounded-lg p-4">
+                            <p className="text-sm text-slate-300">
+                                When enabled, you can log any effort even if you didn&apos;t fully complete the habit.
                             </p>
+                            <div className="mt-3 text-xs text-slate-400 space-y-1">
+                                <div>✓ Maintains your streak</div>
+                                <div>✓ Awards 25 points (fixed)</div>
+                                <div>✗ Does NOT get streak multipliers</div>
+                                <div>✗ Does NOT count toward earning shields</div>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -508,8 +501,7 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                             <div className="font-semibold text-slate-100 mb-2">Days 0-6 (No Multiplier)</div>
                             <div className="space-y-1 text-sm text-slate-300">
                                 <div>Full completion: {basePoints} pts</div>
-                                <div>Partial completion: {partialPoints} pts</div>
-                                {allowShowUp && <div>Show up: {showUpPoints} pts</div>}
+                                {allowPartial && <div className="text-slate-400">Partial completion: 25 pts (no multiplier)</div>}
                             </div>
                         </div>
 
@@ -520,19 +512,18 @@ export default function HabitCreateForm({ onSuccess, onCancel }: HabitCreateForm
                             </div>
                             <div className="space-y-1 text-sm text-slate-300">
                                 <div>Full completion: {preview7Days.base} pts</div>
-                                <div>Partial completion: {preview7Days.partial} pts</div>
-                                {allowShowUp && <div>Show up: {preview7Days.showUp} pts (no multiplier)</div>}
+                                {allowPartial && <div className="text-slate-400">Partial completion: 25 pts (no multiplier)</div>}
                             </div>
                         </div>
 
                         <div className="bg-slate-700 rounded-lg p-4">
                             <div className="font-semibold text-slate-100 mb-2">
                                 Days 14+ ({preview14Days.multiplier}x Multiplier)
+                                {streakShield && <span className="ml-2 text-emerald-500 text-sm">+ Shield Earned</span>}
                             </div>
                             <div className="space-y-1 text-sm text-slate-300">
                                 <div>Full completion: {preview14Days.base} pts</div>
-                                <div>Partial completion: {preview14Days.partial} pts</div>
-                                {allowShowUp && <div>Show up: {preview14Days.showUp} pts (no multiplier)</div>}
+                                {allowPartial && <div className="text-slate-400">Partial completion: 25 pts (no multiplier)</div>}
                             </div>
                         </div>
                     </div>
