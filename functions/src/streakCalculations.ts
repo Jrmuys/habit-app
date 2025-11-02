@@ -48,17 +48,9 @@ export function calculateStreak(
 
     // Helper function to determine if an entry is a FULL completion
     const isFullCompletion = (entry: HabitEntry): boolean => {
-        // For checkbox habits, full completion is value === true
-        // For other types, value === 'showUp' is NOT full completion
-        // String/number values are partial completion (not full)
-        if (entry.value === 'showUp') {
-            return false;
-        }
-        if (entry.value === true) {
-            return true;
-        }
-        // All other values (numbers, strings, false) are not full completions
-        return false;
+        // Only value === true counts as full completion
+        // All other values (showUp, strings, numbers, false) are not full completions
+        return entry.value === true;
     };
 
     // Start from today and work backwards
